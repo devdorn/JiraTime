@@ -32,7 +32,7 @@ export const TicketList = ({ settings }: TicketListProps) => {
             setTickets(inProgress);
         } catch (err) {
             console.error(err);
-            setError("Failed to load tickets. Check your settings and connection.");
+            setError(err instanceof Error ? err.message : "Failed to load tickets. Check your settings and connection.");
         } finally {
             setLoading(false);
         }

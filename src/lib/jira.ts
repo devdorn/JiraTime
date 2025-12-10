@@ -20,7 +20,7 @@ const createHeaders = (settings: AppSettings) => {
 
 export const validateConnection = async (settings: AppSettings): Promise<boolean> => {
     try {
-        const response = await fetch(`${settings.jiraHost}/rest/api/2/myself`, {
+        const response = await fetch(`${settings.jiraHost}/rest/api/3/myself`, {
             headers: createHeaders(settings),
         });
         return response.ok;
@@ -53,7 +53,7 @@ export const fetchDoneTickets = async (settings: AppSettings): Promise<JiraTicke
 };
 
 const searchTickets = async (settings: AppSettings, jql: string): Promise<JiraTicket[]> => {
-    const url = new URL(`${settings.jiraHost}/rest/api/2/search`);
+    const url = new URL(`${settings.jiraHost}/rest/api/3/search`);
     url.searchParams.append("jql", jql);
     url.searchParams.append("fields", "summary,timespent");
 
@@ -85,9 +85,25 @@ export const addWorklog = async (
     // timeSpent can be "2h" (string) or 120 (seconds)
     // The API allows "timeSpent" or "timeSpentSeconds" in the body.
 
-    const body: any = {
-        comment: comment,
-    };
+    const body: any = {};
+
+    if (comment) {
+        body.comment = {
+            type: "doc",
+            version: 1,
+            content: [
+                {
+                    type: "paragraph",
+                    content: [
+                        {
+                            type: "text",
+                            text: comment
+                        }
+                    ]
+                }
+            ]
+        };
+    }
 
     if (typeof timeSpent === 'number') {
         body.timeSpentSeconds = timeSpent;
@@ -95,7 +111,7 @@ export const addWorklog = async (
         body.timeSpent = timeSpent;
     }
 
-    const response = await fetch(`${settings.jiraHost}/rest/api/2/issue/${ticketId}/worklog`, {
+    const response = await fetch(`${settings.jiraHost}/rest/api/3/issue/${ticketId}/worklog`, {
         method: "POST",
         headers: createHeaders(settings),
         body: JSON.stringify(body),
