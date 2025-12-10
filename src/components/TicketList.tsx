@@ -1,22 +1,30 @@
 import { useState, useEffect } from "react";
 import type { AppSettings, JiraTicket } from "../lib/types";
-import { fetchInProgressTickets, fetchDoneTickets } from "../lib/jira";
+import { fetchInProgressTickets, fetchDoneTickets, fetchTicketsByKeys } from "../lib/jira";
 import { useActiveTimer } from "../hooks/useActiveTimer";
+import { saveSettings } from "../lib/storage";
 import { TicketItem } from "./TicketItem";
-import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, Pin, Plus } from "lucide-react";
 import { Button } from "./ui/Button";
+import { Input } from "./ui/Input";
 
 interface TicketListProps {
     settings: AppSettings;
+    onSettingsChange?: () => void;
 }
 
-export const TicketList = ({ settings }: TicketListProps) => {
+export const TicketList = ({ settings, onSettingsChange }: TicketListProps) => {
     const [tickets, setTickets] = useState<JiraTicket[]>([]);
+    const [pinnedTickets, setPinnedTickets] = useState<JiraTicket[]>([]);
     const [doneTickets, setDoneTickets] = useState<JiraTicket[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [showDone, setShowDone] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+
+    // Manual Pin Binding
+    const [pinInput, setPinInput] = useState("");
+    const [isPinning, setIsPinning] = useState(false);
 
     const { activeTimer, startTimer, stopTimer } = useActiveTimer();
 
@@ -29,13 +37,69 @@ export const TicketList = ({ settings }: TicketListProps) => {
             setLoading(true);
             setError("");
             const inProgress = await fetchInProgressTickets(settings);
+
+            // Filter duplicates: Tickets in progress might also be in pinned list.
+            // Requirement: "visual distinction between my tickets and the tickets i dded manuallly"
+            // We'll keep them in separate lists. If a ticket is in both, maybe duplicate is okay?
+            // Or remove from pinned if it's in progress?
+            // Let's keep them separate for now as requested.
+
             setTickets(inProgress);
+
+            // Fetch Pinned
+            if (settings.pinnedTicketKeys.length > 0) {
+                const pinned = await fetchTicketsByKeys(settings, settings.pinnedTicketKeys);
+                setPinnedTickets(pinned);
+            } else {
+                setPinnedTickets([]);
+            }
+
         } catch (err) {
             console.error(err);
             setError(err instanceof Error ? err.message : "Failed to load tickets. Check your settings and connection.");
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleAddPin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const key = pinInput.trim().toUpperCase();
+        if (!key) return;
+
+        // Optimistic check: prevent dupes
+        if (settings.pinnedTicketKeys.includes(key)) {
+            setPinInput("");
+            return;
+        }
+
+        setIsPinning(true);
+        try {
+            // Verify it exists? Or just add it?
+            // "i want to be able to add tickets... all based on the ticket id"
+            // Let's verify it exists by fetching it.
+            const [ticket] = await fetchTicketsByKeys(settings, [key]);
+
+            if (ticket) {
+                const newKeys = [...settings.pinnedTicketKeys, key];
+                await saveSettings({ ...settings, pinnedTicketKeys: newKeys });
+                setPinInput("");
+                if (onSettingsChange) onSettingsChange(); // Reload settings (which triggers refresh)
+            } else {
+                alert(`Ticket ${key} not found.`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Failed to pin ticket.");
+        } finally {
+            setIsPinning(false);
+        }
+    };
+
+    const handleRemovePin = async (key: string) => {
+        const newKeys = settings.pinnedTicketKeys.filter(k => k !== key);
+        await saveSettings({ ...settings, pinnedTicketKeys: newKeys });
+        if (onSettingsChange) onSettingsChange();
     };
 
     const loadDoneTickets = async () => {
@@ -95,6 +159,43 @@ export const TicketList = ({ settings }: TicketListProps) => {
 
     return (
         <div className="p-4 space-y-4 pb-20">
+            {/* Pinned Tickets Section */}
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                        <Pin size={14} /> Pinned Tickets
+                    </h2>
+                </div>
+
+                <form onSubmit={handleAddPin} className="flex gap-2">
+                    <Input
+                        placeholder="Add ticket (e.g. PROJ-123)"
+                        value={pinInput}
+                        onChange={e => setPinInput(e.target.value)}
+                        className="h-8 text-sm"
+                        disabled={isPinning}
+                    />
+                    <Button type="submit" variant="secondary" className="h-8" disabled={!pinInput || isPinning} isLoading={isPinning}>
+                        <Plus size={16} />
+                    </Button>
+                </form>
+
+                {pinnedTickets.map((ticket) => (
+                    <TicketItem
+                        key={ticket.id}
+                        ticket={ticket}
+                        settings={settings}
+                        activeTimer={activeTimer}
+                        onStartTimer={startTimer}
+                        onStopTimer={stopTimer}
+                        onRefresh={handleRefresh}
+                        onRemove={() => handleRemovePin(ticket.key)}
+                    />
+                ))}
+            </div>
+
+            <div className="border-t border-gray-100 dark:border-slate-800 my-4"></div>
+
             <div className="flex items-center justify-between mb-2">
                 <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">In Progress</h2>
                 <button onClick={handleRefresh} className="text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 transition-colors p-1" title="Refresh">

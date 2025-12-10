@@ -5,7 +5,7 @@ import { addWorklog } from "../lib/jira";
 import { formatDuration, formatDurationFromStart, parseDuration, cn } from "../lib/utils";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
-import { Play, Square, ExternalLink, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { Trash2, Play, Square, ExternalLink, ChevronDown, ChevronUp, Clock } from "lucide-react";
 
 interface TicketItemProps {
     ticket: JiraTicket;
@@ -14,6 +14,7 @@ interface TicketItemProps {
     onStartTimer: (id: string) => void;
     onStopTimer: () => void;
     onRefresh: () => void;
+    onRemove?: () => void; // Optional: For pinned tickets
 }
 
 export const TicketItem = ({
@@ -23,6 +24,7 @@ export const TicketItem = ({
     onStartTimer,
     onStopTimer,
     onRefresh,
+    onRemove,
 }: TicketItemProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [manualTime, setManualTime] = useState("");
@@ -152,8 +154,22 @@ export const TicketItem = ({
                     </div>
                 </div>
 
-                <div className="text-gray-400 mt-1">
-                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                <div className="flex items-center gap-1">
+                    {onRemove && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Unpin ${ticket.key}?`)) onRemove();
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 dark:text-gray-500 transition-colors rounded-full hover:bg-red-50 dark:hover:bg-red-900/20"
+                            title="Unpin Ticket"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    )}
+                    <div className="text-gray-400 mt-1">
+                        {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    </div>
                 </div>
             </div>
 

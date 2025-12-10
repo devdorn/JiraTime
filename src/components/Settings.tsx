@@ -53,6 +53,7 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
                 jiraHost: host,
                 jiraPat: formData.jiraPat.trim(),
                 theme: (formData.theme as 'light' | 'dark' | 'system') || 'system',
+                pinnedTicketKeys: formData.pinnedTicketKeys || [],
             };
 
             await saveSettings(cleanSettings);

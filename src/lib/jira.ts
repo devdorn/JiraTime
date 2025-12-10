@@ -43,6 +43,13 @@ export const fetchDoneTickets = async (settings: AppSettings): Promise<JiraTicke
     return searchTickets(settings, jql);
 };
 
+export const fetchTicketsByKeys = async (settings: AppSettings, keys: string[]): Promise<JiraTicket[]> => {
+    if (keys.length === 0) return [];
+    // Join keys for JQL: key in (A, B, C)
+    const jql = `key in (${keys.join(",")})`;
+    return searchTickets(settings, jql);
+};
+
 const searchTickets = async (settings: AppSettings, jql: string): Promise<JiraTicket[]> => {
     // API v3 Search JQL Endpoint (POST required)
     const response = await fetch(`${settings.jiraHost}/rest/api/3/search/jql`, {

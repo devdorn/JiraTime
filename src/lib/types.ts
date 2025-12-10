@@ -2,6 +2,7 @@ export interface AppSettings {
     jiraHost: string;
     jiraPat: string;
     theme: 'light' | 'dark' | 'system';
+    pinnedTicketKeys: string[];
 }
 
 export interface JiraTicket {

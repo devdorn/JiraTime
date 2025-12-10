@@ -130,7 +130,7 @@ function App() {
             onThemeChange={setPreviewTheme}
           />
         ) : settings ? (
-          <TicketList settings={settings} />
+          <TicketList settings={settings} onSettingsChange={checkConfig} />
         ) : (
           <div className="p-8 text-center text-gray-500">
             Please configure settings first.
