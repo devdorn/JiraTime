@@ -1,0 +1,198 @@
+import { useState, useEffect } from "react";
+import type { JiraTicket, AppSettings } from "../lib/types";
+import type { ActiveTimer } from "../hooks/useActiveTimer";
+import { addWorklog } from "../lib/jira";
+import { formatDuration, formatDurationFromStart, cn } from "../lib/utils";
+import { Button } from "./ui/Button";
+import { Input } from "./ui/Input";
+import { Play, Square, ExternalLink, ChevronDown, ChevronUp, Clock } from "lucide-react";
+
+interface TicketItemProps {
+    ticket: JiraTicket;
+    settings: AppSettings;
+    activeTimer: ActiveTimer | null;
+    onStartTimer: (id: string) => void;
+    onStopTimer: () => void;
+    onRefresh: () => void;
+}
+
+export const TicketItem = ({
+    ticket,
+    settings,
+    activeTimer,
+    onStartTimer,
+    onStopTimer,
+    onRefresh,
+}: TicketItemProps) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [manualTime, setManualTime] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [liveDuration, setLiveDuration] = useState("");
+
+    const isTimerRunning = activeTimer?.ticketId === ticket.id;
+
+    // Live timer update
+    useEffect(() => {
+        let interval: number;
+        if (isTimerRunning && activeTimer) {
+            // Force expand if timer is running for this ticket
+            setIsExpanded(true);
+
+            const update = () => {
+                setLiveDuration(formatDurationFromStart(activeTimer.startTime));
+            };
+            update();
+            interval = window.setInterval(update, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [isTimerRunning, activeTimer]);
+
+    const handleManualSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!manualTime) return;
+
+        setIsSubmitting(true);
+        try {
+            await addWorklog(settings, ticket.id, manualTime);
+            setManualTime("");
+            onRefresh();
+            // Optional: Show success feedback
+        } catch (error) {
+            console.error(error);
+            alert("Failed to log time. Check console.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleStopTimer = async () => {
+        if (!activeTimer) return;
+
+        setIsSubmitting(true);
+        try {
+            const seconds = Math.floor((Date.now() - activeTimer.startTime) / 1000);
+            // Minimum 60 seconds or just log whatever? 
+            // Jira might reject 0, but 1s is fine usually. 
+            // Let's ensure at least 60s (1m) for sanity? 
+            // No, let user log what they want. But < 60s shows as 0m in some UIs.
+
+            await addWorklog(settings, ticket.id, seconds);
+            onStopTimer();
+            onRefresh();
+        } catch (error) {
+            console.error(error);
+            alert("Failed to save timer. Check console.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className={cn(
+            "border rounded-lg bg-white transition-all shadow-sm",
+            isTimerRunning ? "border-blue-500 ring-1 ring-blue-500" : "border-gray-200"
+        )}>
+
+            {/* Header / Summary */}
+            <div
+                className="p-3 cursor-pointer hover:bg-gray-50 flex items-start justify-between gap-3"
+                onClick={() => setIsExpanded(!isExpanded)}
+            >
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                            {ticket.key}
+                        </span>
+                        <a
+                            href={`${settings.jiraHost}/browse/${ticket.key}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <ExternalLink size={14} />
+                        </a>
+                        {isTimerRunning && (
+                            <span className="text-xs font-bold text-blue-600 animate-pulse flex items-center gap-1">
+                                <Clock size={12} />
+                                Tracking
+                            </span>
+                        )}
+                    </div>
+                    <h3 className="text-sm font-medium text-gray-900 leading-tight line-clamp-2">
+                        {ticket.summary}
+                    </h3>
+                    <div className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
+                        <Clock size={12} className="text-gray-400" />
+                        <span>{formatDuration(ticket.timeSpentSeconds)} logged</span>
+                        {isTimerRunning && (
+                            <span className="text-blue-600 font-mono ml-2">
+                                + {liveDuration}
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                <div className="text-gray-400 mt-1">
+                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                </div>
+            </div>
+
+            {/* Expanded Actions */}
+            {isExpanded && (
+                <div className="p-3 pt-0 border-t border-gray-100 bg-gray-50/50 rounded-b-lg">
+
+                    {/* Timer Section */}
+                    <div className="py-3 flex items-center justify-between gap-3">
+                        {isTimerRunning ? (
+                            <Button
+                                className="w-full bg-red-600 hover:bg-red-700 text-white"
+                                onClick={handleStopTimer}
+                                isLoading={isSubmitting}
+                            >
+                                <Square className="fill-current mr-2 h-4 w-4" />
+                                Stop & Save ({liveDuration})
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="primary"
+                                className="w-full"
+                                disabled={!!activeTimer} // Disable starting if another timer is running elsewhere
+                                onClick={() => onStartTimer(ticket.id)}
+                            >
+                                <Play className="fill-current mr-2 h-4 w-4" />
+                                Start Timer
+                            </Button>
+                        )}
+                    </div>
+
+                    <div className="relative flex py-1 items-center">
+                        <div className="flex-grow border-t border-gray-200"></div>
+                        <span className="flex-shrink-0 mx-2 text-xs text-gray-400 uppercase">Or</span>
+                        <div className="flex-grow border-t border-gray-200"></div>
+                    </div>
+
+                    {/* Manual Entry Section */}
+                    <form onSubmit={handleManualSubmit} className="pt-2 flex gap-2">
+                        <Input
+                            placeholder="e.g. 2h 30m"
+                            value={manualTime}
+                            onChange={(e) => setManualTime(e.target.value)}
+                            className="h-9"
+                            disabled={isSubmitting}
+                        />
+                        <Button
+                            type="submit"
+                            variant="secondary"
+                            className="h-9 px-3"
+                            isLoading={isSubmitting}
+                            disabled={!manualTime}
+                        >
+                            Log
+                        </Button>
+                    </form>
+                </div>
+            )}
+        </div>
+    );
+};
