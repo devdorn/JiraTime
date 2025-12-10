@@ -70,11 +70,13 @@ export const TicketItem = ({
 
         setIsSubmitting(true);
         try {
-            const seconds = Math.floor((Date.now() - activeTimer.startTime) / 1000);
-            // Minimum 60 seconds or just log whatever? 
-            // Jira might reject 0, but 1s is fine usually. 
-            // Let's ensure at least 60s (1m) for sanity? 
-            // No, let user log what they want. But < 60s shows as 0m in some UIs.
+            let seconds = Math.floor((Date.now() - activeTimer.startTime) / 1000);
+
+            // Jira rejects worklogs with 0 time spent.
+            // Enforce a minimum of 60 seconds (1 minute) to avoid "Worklog must not be null" errors.
+            if (seconds < 60) {
+                seconds = 60;
+            }
 
             await addWorklog(settings, ticket.id, seconds);
             onStopTimer();

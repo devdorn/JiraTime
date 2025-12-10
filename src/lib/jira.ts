@@ -53,12 +53,15 @@ export const fetchDoneTickets = async (settings: AppSettings): Promise<JiraTicke
 };
 
 const searchTickets = async (settings: AppSettings, jql: string): Promise<JiraTicket[]> => {
-    const url = new URL(`${settings.jiraHost}/rest/api/3/search`);
-    url.searchParams.append("jql", jql);
-    url.searchParams.append("fields", "summary,timespent");
-
-    const response = await fetch(url.toString(), {
+    // API v3 Search JQL Endpoint (POST required)
+    const response = await fetch(`${settings.jiraHost}/rest/api/3/search/jql`, {
+        method: "POST",
         headers: createHeaders(settings),
+        body: JSON.stringify({
+            jql: jql,
+            fields: ["summary", "timespent"],
+            maxResults: 50 // Semantic limit
+        })
     });
 
     if (!response.ok) {
