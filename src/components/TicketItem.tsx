@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { JiraTicket, AppSettings } from "../lib/types";
 import type { ActiveTimer } from "../hooks/useActiveTimer";
 import { addWorklog } from "../lib/jira";
-import { formatDuration, formatDurationFromStart, cn } from "../lib/utils";
+import { formatDuration, formatDurationFromStart, parseDuration, cn } from "../lib/utils";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import { Play, Square, ExternalLink, ChevronDown, ChevronUp, Clock } from "lucide-react";
@@ -47,12 +47,26 @@ export const TicketItem = ({
         return () => clearInterval(interval);
     }, [isTimerRunning, activeTimer]);
 
+    // Easter Egg: Touch Grass Check
+    const checkTouchGrass = (seconds: number) => {
+        // >= 8 Hours (8 * 3600 = 28800)
+        if (seconds >= 28800) {
+            alert("Whoa, that's 8+ hours! 🌿\n\nGo touch some grass.\n(Saving your time anyway...)");
+        }
+    };
+
     const handleManualSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!manualTime) return;
 
         setIsSubmitting(true);
         try {
+            // Check Easter Egg
+            const seconds = parseDuration(manualTime);
+            if (seconds > 0) { // Only check if valid
+                checkTouchGrass(seconds);
+            }
+
             await addWorklog(settings, ticket.id, manualTime);
             setManualTime("");
             onRefresh();
@@ -71,6 +85,9 @@ export const TicketItem = ({
         setIsSubmitting(true);
         try {
             let seconds = Math.floor((Date.now() - activeTimer.startTime) / 1000);
+
+            // Check Easter Egg (using computed seconds directly)
+            checkTouchGrass(seconds);
 
             // Jira rejects worklogs with 0 time spent.
             // Enforce a minimum of 60 seconds (1 minute) to avoid "Worklog must not be null" errors.
@@ -117,7 +134,7 @@ export const TicketItem = ({
                         {isTimerRunning && (
                             <span className="text-xs font-bold text-blue-600 dark:text-blue-400 animate-pulse flex items-center gap-1">
                                 <Clock size={12} />
-                                Tracking
+                                <Tracking />
                             </span>
                         )}
                     </div>
@@ -199,3 +216,6 @@ export const TicketItem = ({
         </div>
     );
 };
+
+const Tracking = () => <span>Tracking</span>; // Helper to fix JSX error in replace
+
