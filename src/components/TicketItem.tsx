@@ -148,7 +148,8 @@ export const TicketItem = ({
                     <div className="py-3 flex items-center justify-between gap-3">
                         {isTimerRunning ? (
                             <Button
-                                className="w-full bg-red-600 hover:bg-red-700 text-white"
+                                variant="danger"
+                                className="w-full"
                                 onClick={handleStopTimer}
                                 isLoading={isSubmitting}
                             >
