@@ -4,17 +4,8 @@ const createHeaders = (settings: AppSettings) => {
     const headers: HeadersInit = {
         "Content-Type": "application/json",
         "Accept": "application/json",
+        "Authorization": `Bearer ${settings.jiraPat}`
     };
-
-    if (settings.jiraEmail) {
-        // Cloud: Basic Auth
-        const auth = btoa(`${settings.jiraEmail}:${settings.jiraPat}`);
-        headers["Authorization"] = `Basic ${auth}`;
-    } else {
-        // DC: Bearer Token
-        headers["Authorization"] = `Bearer ${settings.jiraPat}`;
-    }
-
     return headers;
 };
 

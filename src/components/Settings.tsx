@@ -17,7 +17,6 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
     const [formData, setFormData] = useState<Partial<AppSettings>>({
         jiraHost: "",
         jiraPat: "",
-        jiraEmail: "",
         theme: "system", // Default theme
     });
     const [loading, setLoading] = useState(false);
@@ -53,7 +52,6 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
             const cleanSettings: AppSettings = {
                 jiraHost: host,
                 jiraPat: formData.jiraPat.trim(),
-                jiraEmail: formData.jiraEmail?.trim(),
                 theme: (formData.theme as 'light' | 'dark' | 'system') || 'system',
             };
 
@@ -84,14 +82,7 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
                     helperText="The base URL of your Jira instance"
                 />
 
-                <Input
-                    label="Jira Email (Optional)"
-                    type="email"
-                    placeholder="user@example.com (Cloud only)"
-                    value={formData.jiraEmail || ""}
-                    onChange={(e) => setFormData({ ...formData, jiraEmail: e.target.value })}
-                    helperText="Required for Jira Cloud (Basic Auth), leave empty for Data Center (PAT only)."
-                />
+
 
                 <div className="flex flex-col gap-1.5">
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
