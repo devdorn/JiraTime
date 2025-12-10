@@ -129,7 +129,7 @@ export const TicketList = ({ settings }: TicketListProps) => {
                         type="checkbox"
                         checked={showDone}
                         onChange={toggleDone}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4 dark:border-slate-600 dark:bg-slate-800 dark:checked:bg-blue-500"
                     />
                     <label htmlFor="show-done" className="text-sm font-medium text-gray-700 dark:text-gray-300 select-none">
                         Show Completed Tickets

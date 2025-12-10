@@ -14,4 +14,8 @@
     /* Standard extension width */
     min-height: 500px;
   }
+
+  html.dark {
+    color-scheme: dark;
+  }
 }
