@@ -91,44 +91,44 @@ export const TicketItem = ({
 
     return (
         <div className={cn(
-            "border rounded-lg bg-white transition-all shadow-sm",
-            isTimerRunning ? "border-blue-500 ring-1 ring-blue-500" : "border-gray-200"
+            "border rounded-lg bg-white dark:bg-slate-800 transition-all shadow-sm",
+            isTimerRunning ? "border-blue-500 ring-1 ring-blue-500 dark:border-blue-500 dark:ring-blue-500" : "border-gray-200 dark:border-slate-700"
         )}>
 
             {/* Header / Summary */}
             <div
-                className="p-3 cursor-pointer hover:bg-gray-50 flex items-start justify-between gap-3"
+                className="p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50 flex items-start justify-between gap-3"
                 onClick={() => setIsExpanded(!isExpanded)}
             >
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
                             {ticket.key}
                         </span>
                         <a
                             href={`${settings.jiraHost}/browse/${ticket.key}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            className="text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <ExternalLink size={14} />
                         </a>
                         {isTimerRunning && (
-                            <span className="text-xs font-bold text-blue-600 animate-pulse flex items-center gap-1">
+                            <span className="text-xs font-bold text-blue-600 dark:text-blue-400 animate-pulse flex items-center gap-1">
                                 <Clock size={12} />
                                 Tracking
                             </span>
                         )}
                     </div>
-                    <h3 className="text-sm font-medium text-gray-900 leading-tight line-clamp-2">
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-tight line-clamp-2">
                         {ticket.summary}
                     </h3>
-                    <div className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
-                        <Clock size={12} className="text-gray-400" />
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 flex items-center gap-1">
+                        <Clock size={12} className="text-gray-400 dark:text-gray-500" />
                         <span>{formatDuration(ticket.timeSpentSeconds)} logged</span>
                         {isTimerRunning && (
-                            <span className="text-blue-600 font-mono ml-2">
+                            <span className="text-blue-600 dark:text-blue-400 font-mono ml-2">
                                 + {liveDuration}
                             </span>
                         )}
@@ -142,7 +142,7 @@ export const TicketItem = ({
 
             {/* Expanded Actions */}
             {isExpanded && (
-                <div className="p-3 pt-0 border-t border-gray-100 bg-gray-50/50 rounded-b-lg">
+                <div className="p-3 pt-0 border-t border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800/50 rounded-b-lg">
 
                     {/* Timer Section */}
                     <div className="py-3 flex items-center justify-between gap-3">
@@ -169,9 +169,9 @@ export const TicketItem = ({
                     </div>
 
                     <div className="relative flex py-1 items-center">
-                        <div className="flex-grow border-t border-gray-200"></div>
-                        <span className="flex-shrink-0 mx-2 text-xs text-gray-400 uppercase">Or</span>
-                        <div className="flex-grow border-t border-gray-200"></div>
+                        <div className="flex-grow border-t border-gray-200 dark:border-slate-700"></div>
+                        <span className="flex-shrink-0 mx-2 text-xs text-gray-400 dark:text-gray-500 uppercase">Or</span>
+                        <div className="flex-grow border-t border-gray-200 dark:border-slate-700"></div>
                     </div>
 
                     {/* Manual Entry Section */}

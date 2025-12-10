@@ -73,7 +73,7 @@ export const TicketList = ({ settings }: TicketListProps) => {
 
     if (loading && !refreshing) {
         return (
-            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <div className="flex flex-col items-center justify-center py-12 text-gray-400 dark:text-gray-500">
                 <Loader2 className="h-8 w-8 animate-spin mb-2" />
                 <p className="text-sm">Loading tickets...</p>
             </div>
@@ -83,11 +83,11 @@ export const TicketList = ({ settings }: TicketListProps) => {
     if (error) {
         return (
             <div className="p-6 flex flex-col items-center justify-center text-center">
-                <div className="bg-red-100 p-3 rounded-full text-red-600 mb-3">
+                <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-full text-red-600 dark:text-red-400 mb-3">
                     <AlertCircle size={24} />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900">Connection Error</h3>
-                <p className="text-sm text-gray-500 mt-1 mb-4">{error}</p>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Connection Error</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4">{error}</p>
                 <Button onClick={loadTickets} variant="secondary">Retry</Button>
             </div>
         );
@@ -96,16 +96,16 @@ export const TicketList = ({ settings }: TicketListProps) => {
     return (
         <div className="p-4 space-y-4 pb-20">
             <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">In Progress</h2>
-                <button onClick={handleRefresh} className="text-gray-400 hover:text-blue-600 transition-colors p-1" title="Refresh">
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">In Progress</h2>
+                <button onClick={handleRefresh} className="text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 transition-colors p-1" title="Refresh">
                     <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
                 </button>
             </div>
 
             <div className="space-y-3">
                 {tickets.length === 0 ? (
-                    <div className="text-center py-8 bg-gray-50 border border-dashed rounded-lg border-gray-300">
-                        <p className="text-sm text-gray-500">No tickets in progress found.</p>
+                    <div className="text-center py-8 bg-gray-50 dark:bg-slate-800 border border-dashed rounded-lg border-gray-300 dark:border-slate-700">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No tickets in progress found.</p>
                     </div>
                 ) : (
                     tickets.map((ticket) => (
@@ -122,7 +122,7 @@ export const TicketList = ({ settings }: TicketListProps) => {
                 )}
             </div>
 
-            <div className="pt-4 border-t border-gray-200">
+            <div className="pt-4 border-t border-gray-200 dark:border-slate-700">
                 <div className="flex items-center gap-2 mb-4">
                     <input
                         id="show-done"
@@ -131,7 +131,7 @@ export const TicketList = ({ settings }: TicketListProps) => {
                         onChange={toggleDone}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
                     />
-                    <label htmlFor="show-done" className="text-sm font-medium text-gray-700 select-none">
+                    <label htmlFor="show-done" className="text-sm font-medium text-gray-700 dark:text-gray-300 select-none">
                         Show Completed Tickets
                     </label>
                 </div>

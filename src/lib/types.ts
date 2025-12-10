@@ -1,7 +1,8 @@
 export interface AppSettings {
     jiraHost: string;
     jiraPat: string;
-    jiraEmail?: string;
+    jiraEmail?: string; // Optional: Only for Cloud if using Basic Auth with API Token (email:token)
+    theme: 'light' | 'dark' | 'system';
 }
 
 export interface JiraTicket {

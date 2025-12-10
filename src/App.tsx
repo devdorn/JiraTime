@@ -13,9 +13,36 @@ function App() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [previewTheme, setPreviewTheme] = useState<AppSettings['theme'] | null>(null);
+
   useEffect(() => {
     checkConfig();
   }, []);
+
+  // Apply theme
+  useEffect(() => {
+    const activeTheme = previewTheme || settings?.theme || 'system';
+
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+
+    if (activeTheme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const applySystemTheme = (e: MediaQueryListEvent | MediaQueryList) => {
+        const systemTheme = e.matches ? 'dark' : 'light';
+        root.classList.remove('light', 'dark');
+        root.classList.add(systemTheme);
+      };
+
+      applySystemTheme(mediaQuery);
+
+      const handler = (e: MediaQueryListEvent) => applySystemTheme(e);
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    } else {
+      root.classList.add(activeTheme);
+    }
+  }, [settings?.theme, previewTheme]);
 
   const checkConfig = async () => {
     const s = await getSettings();
@@ -27,6 +54,7 @@ function App() {
   };
 
   const handleSaveSettings = () => {
+    setPreviewTheme(null);
     checkConfig(); // Reload settings
     setView("list");
   };
@@ -38,12 +66,12 @@ function App() {
   }
 
   return (
-    <div className="w-full h-full min-h-[500px] flex flex-col bg-gray-50">
+    <div className="w-full h-full min-h-[500px] flex flex-col bg-gray-50 dark:bg-slate-900 transition-colors">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center gap-2 text-blue-600">
+      <header className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-sm transition-colors">
+        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
           <Clock size={24} className="stroke-[2.5px]" />
-          <h1 className="text-lg font-bold tracking-tight text-gray-900">JiraTime</h1>
+          <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">JiraTime</h1>
         </div>
 
         {settings && view === "list" && (
@@ -64,7 +92,11 @@ function App() {
           <Settings
             onSave={handleSaveSettings}
             showCancel={!!settings}
-            onCancel={() => setView("list")}
+            onCancel={() => {
+              setPreviewTheme(null);
+              setView("list");
+            }}
+            onThemeChange={setPreviewTheme}
           />
         ) : settings ? (
           <TicketList settings={settings} />

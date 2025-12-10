@@ -9,13 +9,16 @@ interface SettingsProps {
     onSave: () => void;
     onCancel?: () => void;
     showCancel?: boolean;
+    onThemeChange?: (theme: 'light' | 'dark' | 'system') => void;
 }
 
-export const Settings = ({ onSave, onCancel, showCancel }: SettingsProps) => {
-    const [formData, setFormData] = useState<AppSettings>({
+export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: SettingsProps) => {
+    // Initialize formData with default values. The useEffect hook will load actual settings.
+    const [formData, setFormData] = useState<Partial<AppSettings>>({
         jiraHost: "",
         jiraPat: "",
         jiraEmail: "",
+        theme: "system", // Default theme
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -47,10 +50,11 @@ export const Settings = ({ onSave, onCancel, showCancel }: SettingsProps) => {
             // Remove trailing slash
             host = host.replace(/\/$/, "");
 
-            const cleanSettings = {
+            const cleanSettings: AppSettings = {
                 jiraHost: host,
                 jiraPat: formData.jiraPat.trim(),
                 jiraEmail: formData.jiraEmail?.trim(),
+                theme: (formData.theme as 'light' | 'dark' | 'system') || 'system',
             };
 
             await saveSettings(cleanSettings);
@@ -65,10 +69,10 @@ export const Settings = ({ onSave, onCancel, showCancel }: SettingsProps) => {
     return (
         <div className="p-4 space-y-6">
             <div className="flex items-center gap-2 mb-6">
-                <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
                     <SettingsIcon size={20} />
                 </div>
-                <h1 className="text-xl font-bold text-gray-900">Settings</h1>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">Settings</h1>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -83,11 +87,33 @@ export const Settings = ({ onSave, onCancel, showCancel }: SettingsProps) => {
                 <Input
                     label="Jira Email (Optional)"
                     type="email"
-                    placeholder="user@example.com (Required for Jira Cloud)"
+                    placeholder="user@example.com (Cloud only)"
                     value={formData.jiraEmail || ""}
                     onChange={(e) => setFormData({ ...formData, jiraEmail: e.target.value })}
-                    helperText="Leave empty if using a PAT on Jira Data Center"
+                    helperText="Required for Jira Cloud (Basic Auth), leave empty for Data Center (PAT only)."
                 />
+
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Theme
+                    </label>
+                    <select
+                        value={formData.theme || 'system'}
+                        onChange={(e) => {
+                            const newTheme = e.target.value as 'light' | 'dark' | 'system';
+                            setFormData({ ...formData, theme: newTheme });
+                            onThemeChange?.(newTheme);
+                        }}
+                        className="px-3 py-2 bg-white border border-gray-300 rounded-md text-sm shadow-sm placeholder-gray-400
+                        focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
+                        disabled:bg-gray-50 disabled:text-gray-500 disabled:border-gray-200
+                        dark:bg-slate-800 dark:border-slate-600 dark:text-white"
+                    >
+                        <option value="system">System Default</option>
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
 
                 <Input
                     label="Personal Access Token / API Token"
@@ -98,7 +124,7 @@ export const Settings = ({ onSave, onCancel, showCancel }: SettingsProps) => {
                 />
 
                 {error && (
-                    <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+                    <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-md text-sm">
                         {error}
                     </div>
                 )}
