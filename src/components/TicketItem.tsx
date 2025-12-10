@@ -128,7 +128,7 @@ export const TicketItem = ({
                         <Clock size={12} className="text-gray-400 dark:text-gray-500" />
                         <span>{formatDuration(ticket.timeSpentSeconds)} logged</span>
                         {isTimerRunning && (
-                            <span className="text-blue-600 dark:text-blue-400 font-mono ml-2">
+                            <span className="text-blue-600 dark:text-blue-400 font-mono ml-2 inline-block timer-display">
                                 + {liveDuration}
                             </span>
                         )}

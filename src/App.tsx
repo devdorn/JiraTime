@@ -5,6 +5,9 @@ import type { AppSettings } from "./lib/types";
 import { Settings as SettingsIcon, Clock, ListChecks } from "lucide-react";
 import { Button } from "./components/ui/Button";
 import { TicketList } from "./components/TicketList";
+import { cn } from "./lib/utils";
+
+
 
 type View = "list" | "settings";
 
@@ -12,6 +15,28 @@ function App() {
   const [view, setView] = useState<View>("list");
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Easter Egg State
+  const [logoClicks, setLogoClicks] = useState(0);
+  const [lastClickTime, setLastClickTime] = useState(0);
+  const [isLudicrousMode, setIsLudicrousMode] = useState(false);
+
+  const handleLogoClick = () => {
+    const now = Date.now();
+    if (now - lastClickTime > 2000) {
+      // Reset if too slow
+      setLogoClicks(1);
+    } else {
+      const newCount = logoClicks + 1;
+      setLogoClicks(newCount);
+      if (newCount === 5) {
+        // Trigger Ludicrous Mode
+        setIsLudicrousMode(prev => !prev);
+        setLogoClicks(0); // Reset
+      }
+    }
+    setLastClickTime(now);
+  };
 
   const [previewTheme, setPreviewTheme] = useState<AppSettings['theme'] | null>(null);
 
@@ -66,10 +91,16 @@ function App() {
   }
 
   return (
-    <div className="w-full h-full min-h-[500px] flex flex-col bg-gray-50 dark:bg-slate-900 transition-colors">
+    <div className={cn(
+      "w-full h-full min-h-[500px] flex flex-col bg-gray-50 dark:bg-slate-900 transition-colors",
+      isLudicrousMode && "ludicrous-mode"
+    )}>
       {/* Header */}
       <header className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-sm transition-colors">
-        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
+        <div
+          className="flex items-center gap-2 text-blue-600 dark:text-blue-500 cursor-pointer select-none active:scale-95 transition-transform"
+          onClick={handleLogoClick}
+        >
           <Clock size={24} className="stroke-[2.5px]" />
           <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">JiraTime</h1>
         </div>
