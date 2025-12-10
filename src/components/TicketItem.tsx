@@ -5,7 +5,56 @@ import { addWorklog } from "../lib/jira";
 import { formatDuration, formatDurationFromStart, parseDuration, cn } from "../lib/utils";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
-import { Trash2, Play, Square, ExternalLink, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import {
+    Trash2, Play, Square, ExternalLink, ChevronDown, ChevronUp, Clock,
+    Bug, CheckSquare, Bookmark, Zap, GitCommit, FileQuestion,
+    HelpCircle, Microscope
+} from "lucide-react";
+
+// Helper for Issue Type Icon
+const IssueIcon = ({ type }: { type?: { name: string; iconUrl: string } }) => {
+    const name = type?.name || "Unknown";
+    const lowerName = name.toLowerCase();
+
+    let IconComponent = FileQuestion;
+    let colorClass = "text-gray-400";
+
+    if (lowerName.includes("bug")) {
+        IconComponent = Bug;
+        colorClass = "text-red-500";
+    } else if (lowerName.includes("task") && !lowerName.includes("sub")) {
+        IconComponent = CheckSquare;
+        colorClass = "text-blue-500";
+    } else if (lowerName.includes("story")) {
+        IconComponent = Bookmark;
+        colorClass = "text-green-500";
+    } else if (lowerName.includes("epic")) {
+        IconComponent = Zap;
+        colorClass = "text-purple-500";
+    } else if (lowerName.includes("sub")) {
+        // Sub-tasks: Distinct color to avoid looking "disabled"
+        IconComponent = GitCommit;
+        colorClass = "text-teal-600 dark:text-teal-400";
+    } else if (lowerName.includes("anfrage")) {
+        // Anfrage (Request/Inquiry)
+        IconComponent = HelpCircle;
+        colorClass = "text-orange-500";
+    } else if (lowerName.includes("analyse")) {
+        // Analyse (Analysis)
+        IconComponent = Microscope;
+        colorClass = "text-indigo-500";
+    }
+
+    return (
+        <div className="group relative flex items-center justify-center p-1 rounded-md hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">
+            <IconComponent size={14} className={colorClass} />
+            {/* Custom Tooltip */}
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 text-[10px] font-medium text-white bg-gray-900/90 dark:bg-black/90 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                {name}
+            </span>
+        </div>
+    );
+};
 
 interface TicketItemProps {
     ticket: JiraTicket;
@@ -121,6 +170,7 @@ export const TicketItem = ({
             >
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
+                        <IssueIcon type={ticket.issueType} />
                         <span className="text-xs font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
                             {ticket.key}
                         </span>

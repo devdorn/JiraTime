@@ -10,6 +10,10 @@ export interface JiraTicket {
     key: string; // The key (e.g. PROJ-123)
     summary: string;
     timeSpentSeconds: number; // Aggregate time spent
+    issueType: {
+        name: string;
+        iconUrl: string;
+    };
 }
 
 export interface WorklogEntry {

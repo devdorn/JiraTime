@@ -28,6 +28,10 @@ interface JiraSearchResponse {
         fields: {
             summary: string;
             timespent: number; // Seconds
+            issuetype: {
+                name: string;
+                iconUrl: string;
+            };
         };
     }>;
 }
@@ -57,7 +61,7 @@ const searchTickets = async (settings: AppSettings, jql: string): Promise<JiraTi
         headers: createHeaders(settings),
         body: JSON.stringify({
             jql: jql,
-            fields: ["summary", "timespent"],
+            fields: ["summary", "timespent", "issuetype"],
             maxResults: 50 // Semantic limit
         })
     });
@@ -74,6 +78,10 @@ const searchTickets = async (settings: AppSettings, jql: string): Promise<JiraTi
         key: issue.key,
         summary: issue.fields.summary,
         timeSpentSeconds: issue.fields.timespent || 0,
+        issueType: {
+            name: issue.fields.issuetype?.name || "Unknown",
+            iconUrl: issue.fields.issuetype?.iconUrl || ""
+        }
     }));
 };
 
