@@ -60,6 +60,11 @@ In any case: this browser extension is designed for all those who desire a strea
 
 While extensive efforts were made to ensure code quality and compliance, please use with appropriate due diligence.
 
+## Contributing
+
+This project is open source, but **Pull Requests are not accepted**.
+If you wish to modify the extension or add features, please **Fork** the repository.
+
 ## License
 
 [MIT](LICENSE) © 2025 Bernhard Dorn
