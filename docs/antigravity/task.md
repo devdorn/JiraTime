@@ -1,0 +1,60 @@
+# Tasks
+
+- [x] Requirements & Setup
+    - [x] Clarify requirements with User
+- [x] Initialize Vite + React Extension project
+- [x] Configure Tailwind CSS
+- [ ] Core Features
+    - [x] Implement Settings Page (Jira Domain, PAT)
+    - [x] Implement Jira Service (Auth, JQL Search, Add Worklog)
+    - [x] Implement Ticket List UI
+    - [x] Implement Time Tracking
+    - [x] Timer UI
+    - [x] Manual Entry logic
+    - [x] Jira API integration
+- [x] Issue Type Icons
+    - [x] Update Types & API to fetch `issuetype`
+    - [x] Map Issue Types to Icons/Colors
+    - [x] Update TicketItem UI
+- [x] Customizable Ticket Filters
+    - [x] Add `filterStatuses` & `filterIssueTypes` to AppSettings
+    - [x] Update generic JQL builder in `jira.ts`
+        - [x] Default: `status not in (Done, Cancelled)`
+        - [x] Custom: `status in (...)` if configured
+    - [x] Add Filter inputs to Settings Page
+- [x] About Page
+    - [x] Add About View/Modal
+    - [x] Display Version, Author (Bernhard Dorn), Copyright
+- [x] Refinements
+    - [x] Change Default Sort Order: Oldest Updated First (Cancelled - User requested Newest First)
+    - [x] Update Manifest: Description & Copyright/Author
+- [x] Documentation & Licensing
+    - [x] Create LICENSE (MIT)
+    - [x] Rewrite README.md
+        - [x] Motivation (Translated & Adapted)
+        - [x] Build & Install Instructions
+- [x] Manual Ticket Management
+    - [x] Add `pinnedTicketKeys` to AppSettings/Storage
+    - [x] Add "Pin Ticket" UI (Input + Add Button)
+    - [x] Fetch & Display Pinned Tickets (Separate Section/Visuals)
+    - [x] Remove Pinned Ticket Logic
+- [x] Dark Mode
+    - [x] Add `theme` to AppSettings
+    - [x] Tailwind `darkMode: 'class'`
+    - [x] Theme selection in Settings
+    - [x] Apply dark styles to components
+- [x] UI Polish
+    - [x] Design System (Tailwind)
+    - [x] Interactive Timer UI
+    - [x] Transitions/Animations
+    - [x] Custom Application Icon (Stopwatch)
+    - [x] Remove unused Email field
+    - [x] Easter Eggs
+        - [x] Logo Click Surprise (Switch to "Ludicrous Mode" - Spinning UI)
+    - [x] Easter Eggs
+        - [x] Logo Click Surprise (Switch to "Ludicrous Mode" - Spinning UI)
+        - [x] "Touch Grass" Alert (>8h log check, warning only, saves anyway)
+- [x] Verification
+    - [x] Test Jira Auth & Fetching
+    - [x] Test Time Logging to Jira
+    - [x] User Walkthrough
