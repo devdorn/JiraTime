@@ -174,6 +174,13 @@ export const TicketItem = ({
                         <span className="text-xs font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
                             {ticket.key}
                         </span>
+                        {/* Status Indicator */}
+                        <div className="group/status relative flex items-center ml-1">
+                            <div className={cn("w-2 h-2 rounded-full", ticket.status?.categoryColor || "bg-gray-400")} />
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[10px] font-medium text-white bg-gray-900/90 dark:bg-black/90 rounded shadow-sm opacity-0 group-hover/status:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                                {ticket.status?.name || "Unknown"}
+                            </span>
+                        </div>
                         <a
                             href={`${settings.jiraHost}/browse/${ticket.key}`}
                             target="_blank"

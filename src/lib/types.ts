@@ -16,6 +16,10 @@ export interface JiraTicket {
         name: string;
         iconUrl: string;
     };
+    status: {
+        name: string;
+        categoryColor: string; // e.g. "blue-gray", "yellow", "green" mapped from category
+    };
 }
 
 export interface WorklogEntry {

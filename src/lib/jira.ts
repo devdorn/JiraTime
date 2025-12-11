@@ -32,6 +32,13 @@ interface JiraSearchResponse {
                 name: string;
                 iconUrl: string;
             };
+            status: {
+                name: string;
+                statusCategory: {
+                    key: string; // "new", "indeterminate", "done"
+                    colorName: string;
+                };
+            };
         };
     }>;
 }
@@ -45,8 +52,8 @@ export const fetchInProgressTickets = async (settings: AppSettings): Promise<Jir
         const statuses = settings.filterStatuses.split(",").map(s => `"${s.trim()}"`).join(", ");
         jql += ` AND status in (${statuses})`;
     } else {
-        // Default: Not Done/Cancelled
-        jql += " AND status not in ('Done', 'Canceled', 'Cancelled', 'Closed')";
+        // Default: Hide Done, Cancelled, and To Do (Show only active work)
+        jql += " AND status not in ('Done', 'Canceled', 'Cancelled', 'Closed', 'To Do', 'New', 'Open')";
     }
 
     // Issue Type Filter
@@ -72,6 +79,17 @@ export const fetchTicketsByKeys = async (settings: AppSettings, keys: string[]):
     return searchTickets(settings, jql);
 };
 
+// Helper to map Jira Status Category to Tailwind friendly colors
+// Jira categories: "new" (gray), "indeterminate" (blue/amber), "done" (green)
+const getStatusColor = (categoryKey: string): string => {
+    switch (categoryKey) {
+        case "new": return "bg-slate-400"; // To Do (Slate for subtle)
+        case "indeterminate": return "bg-amber-500"; // In Progress (Amber for activity)
+        case "done": return "bg-green-500"; // Done
+        default: return "bg-slate-400";
+    }
+};
+
 const searchTickets = async (settings: AppSettings, jql: string): Promise<JiraTicket[]> => {
     // API v3 Search JQL Endpoint (POST required)
     const response = await fetch(`${settings.jiraHost}/rest/api/3/search/jql`, {
@@ -79,7 +97,7 @@ const searchTickets = async (settings: AppSettings, jql: string): Promise<JiraTi
         headers: createHeaders(settings),
         body: JSON.stringify({
             jql: jql,
-            fields: ["summary", "timespent", "issuetype"],
+            fields: ["summary", "timespent", "issuetype", "status"],
             maxResults: 50 // Semantic limit
         })
     });
@@ -99,6 +117,10 @@ const searchTickets = async (settings: AppSettings, jql: string): Promise<JiraTi
         issueType: {
             name: issue.fields.issuetype?.name || "Unknown",
             iconUrl: issue.fields.issuetype?.iconUrl || ""
+        },
+        status: {
+            name: issue.fields.status?.name || "Unknown",
+            categoryColor: getStatusColor(issue.fields.status?.statusCategory?.key || "")
         }
     }));
 };
