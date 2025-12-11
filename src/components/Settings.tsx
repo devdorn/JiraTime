@@ -54,6 +54,8 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
                 jiraPat: formData.jiraPat.trim(),
                 theme: (formData.theme as 'light' | 'dark' | 'system') || 'system',
                 pinnedTicketKeys: formData.pinnedTicketKeys || [],
+                filterStatuses: formData.filterStatuses?.trim() || "",
+                filterIssueTypes: formData.filterIssueTypes?.trim() || "",
             };
 
             await saveSettings(cleanSettings);
@@ -114,6 +116,28 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
                     value={formData.jiraPat}
                     onChange={(e) => setFormData({ ...formData, jiraPat: e.target.value })}
                 />
+
+                <div className="border-t border-gray-200 dark:border-slate-700 py-2">
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Ticket Filters</h3>
+
+                    <div className="space-y-4">
+                        <Input
+                            label="Filter by Status (Optional)"
+                            placeholder="e.g. In Progress, To Do, Review"
+                            helperText="Comma separated. Leave empty to show all non-done tickets."
+                            value={formData.filterStatuses || ""}
+                            onChange={(e) => setFormData({ ...formData, filterStatuses: e.target.value })}
+                        />
+
+                        <Input
+                            label="Filter by Issue Type (Optional)"
+                            placeholder="e.g. Bug, Story, Task"
+                            helperText="Comma separated. Leave empty to show all types."
+                            value={formData.filterIssueTypes || ""}
+                            onChange={(e) => setFormData({ ...formData, filterIssueTypes: e.target.value })}
+                        />
+                    </div>
+                </div>
 
                 {error && (
                     <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-md text-sm">

@@ -3,6 +3,8 @@ export interface AppSettings {
     jiraPat: string;
     theme: 'light' | 'dark' | 'system';
     pinnedTicketKeys: string[];
+    filterStatuses?: string; // Comma separated
+    filterIssueTypes?: string; // Comma separated
 }
 
 export interface JiraTicket {

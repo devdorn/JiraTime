@@ -37,7 +37,25 @@ interface JiraSearchResponse {
 }
 
 export const fetchInProgressTickets = async (settings: AppSettings): Promise<JiraTicket[]> => {
-    const jql = "status = 'In Progress' AND assignee = currentUser() ORDER BY updated DESC";
+    let jql = "assignee = currentUser()";
+
+    // Status Filter
+    if (settings.filterStatuses && settings.filterStatuses.trim().length > 0) {
+        // Custom statuses
+        const statuses = settings.filterStatuses.split(",").map(s => `"${s.trim()}"`).join(", ");
+        jql += ` AND status in (${statuses})`;
+    } else {
+        // Default: Not Done/Cancelled
+        jql += " AND status not in ('Done', 'Canceled', 'Cancelled', 'Closed')";
+    }
+
+    // Issue Type Filter
+    if (settings.filterIssueTypes && settings.filterIssueTypes.trim().length > 0) {
+        const types = settings.filterIssueTypes.split(",").map(t => `"${t.trim()}"`).join(", ");
+        jql += ` AND issuetype in (${types})`;
+    }
+
+    jql += " ORDER BY updated DESC";
     return searchTickets(settings, jql);
 };
 

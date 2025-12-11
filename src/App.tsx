@@ -2,14 +2,14 @@ import { useState, useEffect } from "react";
 import { Settings } from "./components/Settings";
 import { getSettings } from "./lib/storage";
 import type { AppSettings } from "./lib/types";
-import { Settings as SettingsIcon, Clock, ListChecks } from "lucide-react";
+import { Settings as SettingsIcon, Clock, ListChecks, HelpCircle } from "lucide-react";
 import { Button } from "./components/ui/Button";
 import { TicketList } from "./components/TicketList";
 import { cn } from "./lib/utils";
 
 
 
-type View = "list" | "settings";
+type View = "list" | "settings" | "about";
 
 function App() {
   const [view, setView] = useState<View>("list");
@@ -105,16 +105,23 @@ function App() {
           <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">JiraTime</h1>
         </div>
 
-        {settings && view === "list" && (
-          <Button variant="ghost" className="p-2 h-auto text-gray-500" onClick={() => setView("settings")}>
-            <SettingsIcon size={20} />
-          </Button>
-        )}
-        {view === "settings" && settings && (
-          <Button variant="ghost" className="p-2 h-auto text-gray-500" onClick={() => setView("list")}>
-            <ListChecks size={20} />
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {settings && view !== "about" && (
+            <Button variant="ghost" className="p-2 h-auto text-gray-500" onClick={() => setView("about")} title="About">
+              <HelpCircle size={20} />
+            </Button>
+          )}
+          {settings && view === "list" && (
+            <Button variant="ghost" className="p-2 h-auto text-gray-500" onClick={() => setView("settings")} title="Settings">
+              <SettingsIcon size={20} />
+            </Button>
+          )}
+          {view !== "list" && settings && (
+            <Button variant="ghost" className="p-2 h-auto text-gray-500" onClick={() => setView("list")} title="Back to List">
+              <ListChecks size={20} />
+            </Button>
+          )}
+        </div>
       </header>
 
       {/* Main Content */}
@@ -129,6 +136,25 @@ function App() {
             }}
             onThemeChange={setPreviewTheme}
           />
+        ) : view === "about" ? (
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-6">
+            <div className="bg-blue-100 dark:bg-blue-900/30 p-6 rounded-full text-blue-600 dark:text-blue-400 mb-2 animate-bounce">
+              <Clock size={48} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">JiraTime</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">v1.2.0</p>
+            </div>
+
+            <div className="text-gray-600 dark:text-gray-300 space-y-1">
+              <p>Created by <strong className="text-gray-900 dark:text-white">Bernhard Dorn</strong></p>
+              <p className="text-xs text-gray-400 mt-4">© 2025 All Rights Reserved.</p>
+            </div>
+
+            <Button variant="secondary" onClick={() => setView("list")}>
+              Back to Tickets
+            </Button>
+          </div>
         ) : settings ? (
           <TicketList settings={settings} onSettingsChange={checkConfig} />
         ) : (
