@@ -1,6 +1,7 @@
 export interface AppSettings {
     jiraHost: string;
     jiraPat: string;
+    jiraEmail?: string; // Email for API Token authentication (Basic Auth)
     theme: 'light' | 'dark' | 'system';
     pinnedTicketKeys: string[];
     filterStatuses?: string; // Comma separated

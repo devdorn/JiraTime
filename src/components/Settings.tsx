@@ -17,6 +17,7 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
     const [formData, setFormData] = useState<Partial<AppSettings>>({
         jiraHost: "",
         jiraPat: "",
+        jiraEmail: "",
         theme: "system", // Default theme
     });
     const [loading, setLoading] = useState(false);
@@ -52,6 +53,7 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
             const cleanSettings: AppSettings = {
                 jiraHost: host,
                 jiraPat: formData.jiraPat.trim(),
+                jiraEmail: formData.jiraEmail?.trim() || undefined,
                 theme: (formData.theme as 'light' | 'dark' | 'system') || 'system',
                 pinnedTicketKeys: formData.pinnedTicketKeys || [],
                 filterStatuses: formData.filterStatuses?.trim() || "",
@@ -85,6 +87,15 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
                     helperText="The base URL of your Jira instance"
                 />
 
+                <Input
+                    label="Email Address (Optional)"
+                    type="email"
+                    placeholder="your-email@example.com"
+                    value={formData.jiraEmail || ""}
+                    onChange={(e) => setFormData({ ...formData, jiraEmail: e.target.value })}
+                    helperText="Required only if using API Token authentication"
+                />
+
 
 
                 <div className="flex flex-col gap-1.5">
@@ -110,11 +121,12 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
                 </div>
 
                 <Input
-                    label="Personal Access Token / API Token"
+                    label="Personal Access Token (PAT) / API Token"
                     type="password"
-                    placeholder="Make sure to keep this secure"
+                    placeholder="Your PAT or API Token"
                     value={formData.jiraPat}
                     onChange={(e) => setFormData({ ...formData, jiraPat: e.target.value })}
+                    helperText="Use PAT alone, or API Token with email above"
                 />
 
                 <div className="border-t border-gray-200 dark:border-slate-700 py-2">
