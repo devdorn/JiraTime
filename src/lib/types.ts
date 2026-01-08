@@ -1,5 +1,6 @@
 export interface AppSettings {
     jiraHost: string;
+    jiraEmail: string;
     jiraPat: string;
     theme: 'light' | 'dark' | 'system';
     pinnedTicketKeys: string[];

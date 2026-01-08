@@ -1,10 +1,16 @@
 import type { AppSettings, JiraTicket } from "./types";
 
 const createHeaders = (settings: AppSettings) => {
+    // Jira Cloud requires Basic Auth with email:token
+    // Jira Server/DC uses Bearer token (PAT)
+    const auth = settings.jiraEmail
+        ? `Basic ${btoa(`${settings.jiraEmail}:${settings.jiraPat}`)}`
+        : `Bearer ${settings.jiraPat}`;
+
     const headers: HeadersInit = {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "Authorization": `Bearer ${settings.jiraPat}`
+        "Authorization": auth
     };
     return headers;
 };

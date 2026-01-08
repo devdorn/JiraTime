@@ -143,7 +143,10 @@ function App() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">JiraTime</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">v1.2.0</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">v{__APP_VERSION__}</p>
+              <p className="text-xs text-gray-400 mt-2">
+                Found a bug? <a href="https://github.com/devdorn/JiraTime/issues" target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Report an issue</a>
+              </p>
             </div>
 
             <div className="text-gray-600 dark:text-gray-300 space-y-1">
