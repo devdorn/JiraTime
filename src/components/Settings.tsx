@@ -16,6 +16,7 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
     // Initialize formData with default values. The useEffect hook will load actual settings.
     const [formData, setFormData] = useState<Partial<AppSettings>>({
         jiraHost: "",
+        jiraEmail: "",
         jiraPat: "",
         theme: "system", // Default theme
     });
@@ -37,8 +38,13 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
 
         try {
             // Basic validation
-            if (!formData.jiraHost || !formData.jiraPat) {
-                throw new Error("All fields are required");
+            if (!formData.jiraHost || !formData.jiraPat || !formData.jiraEmail) {
+                throw new Error("Host, Email and PAT fields are required");
+            }
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(formData.jiraEmail)) {
+                throw new Error("Invalid email format");
             }
 
             let host = formData.jiraHost.trim();
@@ -51,7 +57,8 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
 
             const cleanSettings: AppSettings = {
                 jiraHost: host,
-                jiraPat: formData.jiraPat.trim(),
+                jiraEmail: formData.jiraEmail?.trim() || "",
+                jiraPat: formData.jiraPat.trim() || "",
                 theme: (formData.theme as 'light' | 'dark' | 'system') || 'system',
                 pinnedTicketKeys: formData.pinnedTicketKeys || [],
                 filterStatuses: formData.filterStatuses?.trim() || "",
@@ -108,6 +115,14 @@ export const Settings = ({ onSave, onCancel, showCancel, onThemeChange }: Settin
                         <option value="dark">Dark</option>
                     </select>
                 </div>
+
+                <Input
+                    label="Jira Email"
+                    placeholder="name@company.com"
+                    value={formData.jiraEmail || ""}
+                    onChange={(e) => setFormData({ ...formData, jiraEmail: e.target.value })}
+
+                />
 
                 <Input
                     label="Personal Access Token / API Token"
