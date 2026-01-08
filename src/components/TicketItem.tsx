@@ -6,9 +6,9 @@ import { formatDuration, formatDurationFromStart, parseDuration, cn } from "../l
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import {
-    Trash2, Play, Square, ExternalLink, ChevronDown, ChevronUp, Clock,
+    Play, Square, ExternalLink, ChevronDown, ChevronUp, Clock,
     Bug, CheckSquare, Bookmark, Zap, GitCommit, FileQuestion,
-    HelpCircle, Microscope
+    HelpCircle, Microscope, PinOff
 } from "lucide-react";
 
 // Helper for Issue Type Icon
@@ -221,7 +221,7 @@ export const TicketItem = ({
                             className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 dark:text-gray-500 transition-colors rounded-full hover:bg-red-50 dark:hover:bg-red-900/20"
                             title="Unpin Ticket"
                         >
-                            <Trash2 size={16} />
+                            <PinOff size={16} />
                         </button>
                     )}
                     <div className="text-gray-400 mt-1">
