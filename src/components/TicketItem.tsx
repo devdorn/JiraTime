@@ -77,6 +77,7 @@ export const TicketItem = ({
 }: TicketItemProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [manualTime, setManualTime] = useState("");
+    const [description, setDescription] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [liveDuration, setLiveDuration] = useState("");
 
@@ -118,8 +119,9 @@ export const TicketItem = ({
                 checkTouchGrass(seconds);
             }
 
-            await addWorklog(settings, ticket.id, manualTime);
+            await addWorklog(settings, ticket.id, manualTime, description);
             setManualTime("");
+            setDescription("");
             onRefresh();
             // Optional: Show success feedback
         } catch (error) {
@@ -146,8 +148,9 @@ export const TicketItem = ({
                 seconds = 60;
             }
 
-            await addWorklog(settings, ticket.id, seconds);
+            await addWorklog(settings, ticket.id, seconds, description);
             onStopTimer();
+            setDescription("");
             onRefresh();
         } catch (error) {
             console.error(error);
@@ -284,6 +287,17 @@ export const TicketItem = ({
                             Log
                         </Button>
                     </form>
+
+                    <div className="pt-2 mt-2 border-t border-gray-100 dark:border-slate-700">
+                        <textarea
+                            placeholder="Work description (optional)"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-xs placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-white dark:placeholder:text-gray-500 dark:focus:ring-blue-400 min-h-[36px] resize-y"
+                            rows={1}
+                            disabled={isSubmitting}
+                        />
+                    </div>
                 </div>
             )}
         </div>
