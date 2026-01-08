@@ -9,4 +9,7 @@ export default defineConfig({
     react(),
     crx({ manifest: manifest as any }),
   ],
+  define: {
+    '__APP_VERSION__': JSON.stringify(manifest.version),
+  },
 })
