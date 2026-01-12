@@ -77,11 +77,28 @@ export const TicketItem = ({
 }: TicketItemProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [manualTime, setManualTime] = useState("");
-    const [description, setDescription] = useState("");
+
+    // Load initial description from local storage
+    const getStorageKey = () => `jira_desc_draft_${ticket.id}`;
+
+    const [description, setDescription] = useState(() => {
+        return localStorage.getItem(getStorageKey()) || "";
+    });
+
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [liveDuration, setLiveDuration] = useState("");
 
     const isTimerRunning = activeTimer?.ticketId === ticket.id;
+
+    // Update local storage when description changes
+    useEffect(() => {
+        const key = getStorageKey();
+        if (description) {
+            localStorage.setItem(key, description);
+        } else {
+            localStorage.removeItem(key);
+        }
+    }, [description, ticket.id]);
 
     // Live timer update
     useEffect(() => {
@@ -120,8 +137,12 @@ export const TicketItem = ({
             }
 
             await addWorklog(settings, ticket.id, manualTime, description);
+
+            // Clear local storage and state upon success
             setManualTime("");
             setDescription("");
+            localStorage.removeItem(getStorageKey());
+
             onRefresh();
             // Optional: Show success feedback
         } catch (error) {
@@ -150,7 +171,11 @@ export const TicketItem = ({
 
             await addWorklog(settings, ticket.id, seconds, description);
             onStopTimer();
+
+            // Clear description and local storage
             setDescription("");
+            localStorage.removeItem(getStorageKey());
+
             onRefresh();
         } catch (error) {
             console.error(error);
