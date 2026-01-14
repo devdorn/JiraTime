@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import type { AppSettings, JiraTicket } from "../lib/types";
-import { fetchInProgressTickets, fetchDoneTickets, fetchTicketsByKeys } from "../lib/jira";
+import { fetchInProgressTickets, fetchDoneTickets, fetchTicketsByKeys, fetchTodaysTime } from "../lib/jira";
 import { useActiveTimer } from "../hooks/useActiveTimer";
 import { saveSettings } from "../lib/storage";
 import { TicketItem } from "./TicketItem";
 import { Loader2, AlertCircle, RefreshCw, Pin, Plus, Clock, ChevronDown } from "lucide-react";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
-import { formatDurationFromStart } from "../lib/utils";
+import { formatDurationFromStart, formatDuration } from "../lib/utils";
 
 interface TicketListProps {
     settings: AppSettings;
@@ -23,6 +23,7 @@ export const TicketList = ({ settings, onSettingsChange }: TicketListProps) => {
     const [showDone, setShowDone] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [elapsedTime, setElapsedTime] = useState("");
+    const [todaysTimeSeconds, setTodaysTimeSeconds] = useState<number | null>(null);
 
     // Collapsible section states
     const [isPinnedCollapsed, setIsPinnedCollapsed] = useState(() => {
@@ -73,6 +74,23 @@ export const TicketList = ({ settings, onSettingsChange }: TicketListProps) => {
         return () => clearInterval(interval);
     }, [activeTimer?.ticketId, activeTimer?.startTime]);
 
+    // Fetch today's time AFTER tickets load (doesn't block initial ticket display)
+    useEffect(() => {
+        // Only fetch time after tickets have loaded
+        if (loading) return;
+
+        const loadTodaysTime = async () => {
+            try {
+                const todaySec = await fetchTodaysTime(settings);
+                setTodaysTimeSeconds(todaySec);
+            } catch (e) {
+                console.error('Failed to load today\'s time:', e);
+                setTodaysTimeSeconds(0);
+            }
+        };
+        loadTodaysTime();
+    }, [loading, settings]); // Run after loading completes
+
     // Toggle functions with localStorage persistence
     const togglePinnedCollapse = () => {
         const newValue = !isPinnedCollapsed;
@@ -90,14 +108,8 @@ export const TicketList = ({ settings, onSettingsChange }: TicketListProps) => {
         try {
             setLoading(true);
             setError("");
+
             const inProgress = await fetchInProgressTickets(settings);
-
-            // Filter duplicates: Tickets in progress might also be in pinned list.
-            // Requirement: "visual distinction between my tickets and the tickets i dded manuallly"
-            // We'll keep them in separate lists. If a ticket is in both, maybe duplicate is okay?
-            // Or remove from pinned if it's in progress?
-            // Let's keep them separate for now as requested.
-
             setTickets(inProgress);
 
             // Fetch Pinned
@@ -241,18 +253,37 @@ export const TicketList = ({ settings, onSettingsChange }: TicketListProps) => {
                     )}
                 </div>
                 <div>
-                    {activeTimer && (
-                        <button
-                            onClick={() => {
-                                const el = document.getElementById(`ticket-${activeTimer.ticketId}`);
-                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors whitespace-nowrap shadow-sm border border-blue-200 dark:border-blue-800"
-                        >
-                            <Clock size={12} className="animate-pulse" />
-                            Active {elapsedTime && `(${elapsedTime})`}
-                        </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {todaysTimeSeconds !== null ? (
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold leading-none">Today</span>
+                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 tabular-nums">
+                                    {formatDuration(todaysTimeSeconds)}
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold leading-none">Today</span>
+                                <div className="flex items-center gap-1">
+                                    <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-pulse"></div>
+                                    <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.15s' }}></div>
+                                    <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                                </div>
+                            </div>
+                        )}
+                        {activeTimer && (
+                            <button
+                                onClick={() => {
+                                    const el = document.getElementById(`ticket-${activeTimer.ticketId}`);
+                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors whitespace-nowrap shadow-sm border border-blue-200 dark:border-blue-800"
+                            >
+                                <Clock size={12} className="animate-pulse" />
+                                Active {elapsedTime && `(${elapsedTime})`}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 

@@ -177,3 +177,96 @@ export const addWorklog = async (
         throw new Error(`Failed to log time: ${response.status} ${response.statusText} - ${errorText}`);
     }
 };
+
+export const fetchTodaysTime = async (settings: AppSettings): Promise<number> => {
+    try {
+        console.log('[fetchTodaysTime] Starting...');
+        // 1. Get current user's account ID
+        const myselfResponse = await fetch(`${settings.jiraHost}/rest/api/3/myself`, {
+            headers: createHeaders(settings),
+        });
+        if (!myselfResponse.ok) {
+            console.warn('[fetchTodaysTime] Failed to get user info');
+            return 0;
+        }
+        const myself = await myselfResponse.json();
+        const accountId = myself.accountId;
+        console.log('[fetchTodaysTime] Account ID:', accountId);
+
+        // 2. Find recently updated issues
+        // worklogDate/worklogAuthor JQL fields return HTTP 410 (deprecated/removed)
+        // Search broadly (30 days, no assignee filter) and filter worklogs client-side
+        // This catches all tickets user worked on, regardless of assignment/status
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD in UTC
+        console.log('[fetchTodaysTime] Today (UTC):', today);
+
+        const searchResponse = await fetch(`${settings.jiraHost}/rest/api/3/search/jql`, {
+            method: "POST",
+            headers: createHeaders(settings),
+            body: JSON.stringify({
+                jql: `updated >= -30d ORDER BY updated DESC`,
+                fields: ["key"],
+                maxResults: 300
+            })
+        });
+
+        if (!searchResponse.ok) {
+            console.warn('[fetchTodaysTime] Search failed');
+            return 0;
+        }
+        const searchData = await searchResponse.json();
+        const issueKeys = searchData.issues.map((i: any) => i.key);
+        console.log('[fetchTodaysTime] Issues with worklogs today:', issueKeys);
+
+        if (issueKeys.length === 0) {
+            console.log('[fetchTodaysTime] No issues found');
+            return 0;
+        }
+
+        // 3. Fetch worklogs for each issue and sum up today's entries
+        // today is already declared above
+        let totalSeconds = 0;
+
+        // Fetch worklogs in parallel
+        const worklogPromises = issueKeys.map(async (key: string) => {
+            const wlResponse = await fetch(`${settings.jiraHost}/rest/api/3/issue/${key}/worklog`, {
+                headers: createHeaders(settings),
+            });
+            if (!wlResponse.ok) return [];
+            const wlData = await wlResponse.json();
+            return wlData.worklogs || [];
+        });
+
+        const allWorklogsResults = await Promise.all(worklogPromises);
+
+        // Get today's date in local timezone (not UTC) for accurate date matching
+        const now = new Date();
+        const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        console.log('[fetchTodaysTime] Comparing with local date:', todayLocal, '(UTC was:', today, ')');
+
+        for (const worklogs of allWorklogsResults) {
+            for (const wl of worklogs) {
+                const isMine = wl.author.accountId === accountId;
+                // Extract just the date part from "2026-01-14T08:00.000+0100" -> "2026-01-14"
+                const worklogDate = wl.started.split('T')[0];
+                const isToday = worklogDate === todayLocal;
+                console.log('[fetchTodaysTime] Worklog:', {
+                    started: wl.started,
+                    worklogDate,
+                    isMine,
+                    isToday,
+                    seconds: wl.timeSpentSeconds
+                });
+                if (isMine && isToday) {
+                    totalSeconds += wl.timeSpentSeconds;
+                }
+            }
+        }
+
+        console.log('[fetchTodaysTime] Total seconds:', totalSeconds);
+        return totalSeconds;
+    } catch (error) {
+        console.error("Failed to fetch today's time:", error);
+        return 0;
+    }
+};
