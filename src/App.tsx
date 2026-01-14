@@ -127,15 +127,17 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {view === "settings" ? (
-          <Settings
-            onSave={handleSaveSettings}
-            showCancel={!!settings}
-            onCancel={() => {
-              setPreviewTheme(null);
-              setView("list");
-            }}
-            onThemeChange={setPreviewTheme}
-          />
+          <div className="h-full overflow-y-auto">
+            <Settings
+              onSave={handleSaveSettings}
+              showCancel={!!settings}
+              onCancel={() => {
+                setPreviewTheme(null);
+                setView("list");
+              }}
+              onThemeChange={setPreviewTheme}
+            />
+          </div>
         ) : view === "about" ? (
           <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-6">
             <div className="bg-blue-100 dark:bg-blue-900/30 p-6 rounded-full text-blue-600 dark:text-blue-400 mb-2 animate-bounce">
