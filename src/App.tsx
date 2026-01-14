@@ -5,7 +5,8 @@ import type { AppSettings } from "./lib/types";
 import { Settings as SettingsIcon, Clock, ListChecks, HelpCircle } from "lucide-react";
 import { Button } from "./components/ui/Button";
 import { TicketList } from "./components/TicketList";
-import { cn } from "./lib/utils";
+import { cn, formatDuration } from "./lib/utils";
+import { fetchTodaysTime } from "./lib/jira";
 
 
 
@@ -15,6 +16,22 @@ function App() {
   const [view, setView] = useState<View>("list");
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [todaysTimeSeconds, setTodaysTimeSeconds] = useState<number | null>(null);
+  const [isTimeRefreshing, setIsTimeRefreshing] = useState(false);
+
+  const fetchTime = async (currentSettings: AppSettings) => {
+    setIsTimeRefreshing(true);
+    try {
+      const time = await fetchTodaysTime(currentSettings);
+      setTodaysTimeSeconds(time);
+    } catch (e) {
+      console.error("Failed to fetch time:", e);
+      // Don't reset to 0 on error, keep last known good value or 0 if none
+      if (todaysTimeSeconds === null) setTodaysTimeSeconds(0);
+    } finally {
+      setIsTimeRefreshing(false);
+    }
+  };
 
   // Easter Egg State
   const [logoClicks, setLogoClicks] = useState(0);
@@ -76,6 +93,10 @@ function App() {
       setView("settings");
     }
     setLoading(false);
+    // Fetch time after config is loaded
+    if (s?.jiraHost && s?.jiraPat) {
+      fetchTime(s);
+    }
   };
 
   const handleSaveSettings = () => {
@@ -105,6 +126,27 @@ function App() {
           <h1 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">JiraTime</h1>
         </div>
 
+        {/* Today's Time Display - Centered/Right in header */}
+        {settings && view !== "settings" && (
+          <div className="flex flex-col items-end mr-auto ml-4">
+            <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold leading-none">Today</span>
+            {todaysTimeSeconds !== null ? (
+              <span className={cn(
+                "text-xs font-semibold text-gray-700 dark:text-gray-300 tabular-nums transition-opacity duration-300",
+                isTimeRefreshing && "opacity-50"
+              )}>
+                {formatDuration(todaysTimeSeconds)}
+              </span>
+            ) : (
+              <div className="flex items-center gap-1 h-4">
+                <div className="w-1.5 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full animate-pulse"></div>
+                <div className="w-1.5 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full animate-pulse delay-75"></div>
+                <div className="w-1.5 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full animate-pulse delay-150"></div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center gap-1">
           {settings && view !== "about" && (
             <Button variant="ghost" className="p-2 h-auto text-gray-500" onClick={() => setView("about")} title="About">
@@ -127,15 +169,17 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {view === "settings" ? (
-          <Settings
-            onSave={handleSaveSettings}
-            showCancel={!!settings}
-            onCancel={() => {
-              setPreviewTheme(null);
-              setView("list");
-            }}
-            onThemeChange={setPreviewTheme}
-          />
+          <div className="h-full overflow-y-auto">
+            <Settings
+              onSave={handleSaveSettings}
+              showCancel={!!settings}
+              onCancel={() => {
+                setPreviewTheme(null);
+                setView("list");
+              }}
+              onThemeChange={setPreviewTheme}
+            />
+          </div>
         ) : view === "about" ? (
           <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-6">
             <div className="bg-blue-100 dark:bg-blue-900/30 p-6 rounded-full text-blue-600 dark:text-blue-400 mb-2 animate-bounce">
@@ -159,7 +203,11 @@ function App() {
             </Button>
           </div>
         ) : settings ? (
-          <TicketList settings={settings} onSettingsChange={checkConfig} />
+          <TicketList
+            settings={settings}
+            onSettingsChange={checkConfig}
+            onTimeUpdate={() => fetchTime(settings)}
+          />
         ) : (
           <div className="p-8 text-center text-gray-500">
             Please configure settings first.
