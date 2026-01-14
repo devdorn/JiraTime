@@ -4,7 +4,7 @@ import { fetchInProgressTickets, fetchDoneTickets, fetchTicketsByKeys } from "..
 import { useActiveTimer } from "../hooks/useActiveTimer";
 import { saveSettings } from "../lib/storage";
 import { TicketItem } from "./TicketItem";
-import { Loader2, AlertCircle, RefreshCw, Pin, Plus, Clock } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, Pin, Plus, Clock, ChevronDown } from "lucide-react";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import { formatDurationFromStart } from "../lib/utils";
@@ -23,6 +23,16 @@ export const TicketList = ({ settings, onSettingsChange }: TicketListProps) => {
     const [showDone, setShowDone] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [elapsedTime, setElapsedTime] = useState("");
+
+    // Collapsible section states
+    const [isPinnedCollapsed, setIsPinnedCollapsed] = useState(() => {
+        const stored = localStorage.getItem('jiratime_pinned_collapsed');
+        return stored ? JSON.parse(stored) : false;
+    });
+    const [isMyWorkCollapsed, setIsMyWorkCollapsed] = useState(() => {
+        const stored = localStorage.getItem('jiratime_mywork_collapsed');
+        return stored ? JSON.parse(stored) : false;
+    });
 
     // Manual Pin Binding
     const [pinInput, setPinInput] = useState("");
@@ -62,6 +72,19 @@ export const TicketList = ({ settings, onSettingsChange }: TicketListProps) => {
         }
         return () => clearInterval(interval);
     }, [activeTimer?.ticketId, activeTimer?.startTime]);
+
+    // Toggle functions with localStorage persistence
+    const togglePinnedCollapse = () => {
+        const newValue = !isPinnedCollapsed;
+        setIsPinnedCollapsed(newValue);
+        localStorage.setItem('jiratime_pinned_collapsed', JSON.stringify(newValue));
+    };
+
+    const toggleMyWorkCollapse = () => {
+        const newValue = !isMyWorkCollapsed;
+        setIsMyWorkCollapsed(newValue);
+        localStorage.setItem('jiratime_mywork_collapsed', JSON.stringify(newValue));
+    };
 
     const loadTickets = async () => {
         try {
@@ -236,69 +259,92 @@ export const TicketList = ({ settings, onSettingsChange }: TicketListProps) => {
             <div className="p-4 pt-16 space-y-4 pb-20">
                 {/* Pinned Tickets Section */}
                 <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div
+                        className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800/50 -mx-2 px-2 py-1 rounded transition-colors"
+                        onClick={togglePinnedCollapse}
+                    >
                         <h2 id="section-pinned" className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1 scroll-mt-28">
                             <Pin size={14} /> Pinned Tickets
                         </h2>
+                        <ChevronDown
+                            size={16}
+                            className={`text-gray-400 transition-transform ${isPinnedCollapsed ? '-rotate-90' : ''}`}
+                        />
                     </div>
 
-                    <form onSubmit={handleAddPin} className="flex gap-2">
-                        <Input
-                            placeholder="Add ticket (e.g. PROJ-123)"
-                            value={pinInput}
-                            onChange={e => setPinInput(e.target.value)}
-                            className="h-8 text-sm"
-                            disabled={isPinning}
-                        />
-                        <Button type="submit" variant="secondary" className="h-8" disabled={!pinInput || isPinning} isLoading={isPinning}>
-                            <Plus size={16} />
-                        </Button>
-                    </form>
+                    {!isPinnedCollapsed && (
+                        <>
 
-                    {pinnedTickets.map((ticket) => (
-                        <div id={`ticket-${ticket.id}`} key={ticket.id}>
-                            <TicketItem
-                                ticket={ticket}
-                                settings={settings}
-                                activeTimer={activeTimer}
-                                onStartTimer={startTimer}
-                                onStopTimer={stopTimer}
-                                onRefresh={handleRefresh}
-                                onRemove={() => handleRemovePin(ticket.key)}
-                            />
-                        </div>
-                    ))}
+                            <form onSubmit={handleAddPin} className="flex gap-2">
+                                <Input
+                                    placeholder="Add ticket (e.g. PROJ-123)"
+                                    value={pinInput}
+                                    onChange={e => setPinInput(e.target.value)}
+                                    className="h-8 text-sm"
+                                    disabled={isPinning}
+                                />
+                                <Button type="submit" variant="secondary" className="h-8" disabled={!pinInput || isPinning} isLoading={isPinning}>
+                                    <Plus size={16} />
+                                </Button>
+                            </form>
+
+                            {pinnedTickets.map((ticket) => (
+                                <div id={`ticket-${ticket.id}`} key={ticket.id}>
+                                    <TicketItem
+                                        ticket={ticket}
+                                        settings={settings}
+                                        activeTimer={activeTimer}
+                                        onStartTimer={startTimer}
+                                        onStopTimer={stopTimer}
+                                        onRefresh={handleRefresh}
+                                        onRemove={() => handleRemovePin(ticket.key)}
+                                    />
+                                </div>
+                            ))}
+                        </>
+                    )}
                 </div>
 
                 <div className="border-t border-gray-100 dark:border-slate-800 my-4"></div>
 
-                <div className="flex items-center justify-between mb-2">
+                <div
+                    className="flex items-center justify-between mb-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800/50 -mx-2 px-2 py-1 rounded transition-colors"
+                    onClick={toggleMyWorkCollapse}
+                >
                     <h2 id="section-inprogress" className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider scroll-mt-28">My Work</h2>
-                    <button onClick={handleRefresh} className="text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 transition-colors p-1" title="Refresh">
-                        <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={(e) => { e.stopPropagation(); handleRefresh(); }} className="text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 transition-colors p-1" title="Refresh">
+                            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+                        </button>
+                        <ChevronDown
+                            size={16}
+                            className={`text-gray-400 transition-transform ${isMyWorkCollapsed ? '-rotate-90' : ''}`}
+                        />
+                    </div>
                 </div>
 
-                <div className="space-y-3">
-                    {tickets.length === 0 ? (
-                        <div className="text-center py-8 bg-gray-50 dark:bg-slate-800 border border-dashed rounded-lg border-gray-300 dark:border-slate-700">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">No tickets in progress found.</p>
-                        </div>
-                    ) : (
-                        tickets.map((ticket) => (
-                            <div id={`ticket-${ticket.id}`} key={ticket.id}>
-                                <TicketItem
-                                    ticket={ticket}
-                                    settings={settings}
-                                    activeTimer={activeTimer}
-                                    onStartTimer={startTimer}
-                                    onStopTimer={stopTimer}
-                                    onRefresh={handleRefresh}
-                                />
+                {!isMyWorkCollapsed && (
+                    <div className="space-y-3">
+                        {tickets.length === 0 ? (
+                            <div className="text-center py-8 bg-gray-50 dark:bg-slate-800 border border-dashed rounded-lg border-gray-300 dark:border-slate-700">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">No tickets in progress found.</p>
                             </div>
-                        ))
-                    )}
-                </div>
+                        ) : (
+                            tickets.map((ticket) => (
+                                <div id={`ticket-${ticket.id}`} key={ticket.id}>
+                                    <TicketItem
+                                        ticket={ticket}
+                                        settings={settings}
+                                        activeTimer={activeTimer}
+                                        onStartTimer={startTimer}
+                                        onStopTimer={stopTimer}
+                                        onRefresh={handleRefresh}
+                                    />
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
 
                 <div className="pt-4 border-t border-gray-200 dark:border-slate-700">
                     <div className="flex items-center gap-2 mb-4">
@@ -344,7 +390,7 @@ export const TicketList = ({ settings, onSettingsChange }: TicketListProps) => {
                         <Button variant="secondary" className="h-8 text-xs" onClick={stopTimer}>Stop</Button>
                     </div>
                 )}
-            </div>
+            </div >
         </>
     );
 };
