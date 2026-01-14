@@ -7,6 +7,7 @@ import { TicketItem } from "./TicketItem";
 import { Loader2, AlertCircle, RefreshCw, Pin, Plus, Clock } from "lucide-react";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
+import { formatDurationFromStart } from "../lib/utils";
 
 interface TicketListProps {
     settings: AppSettings;
@@ -21,6 +22,7 @@ export const TicketList = ({ settings, onSettingsChange }: TicketListProps) => {
     const [error, setError] = useState("");
     const [showDone, setShowDone] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [elapsedTime, setElapsedTime] = useState("");
 
     // Manual Pin Binding
     const [pinInput, setPinInput] = useState("");
@@ -31,6 +33,35 @@ export const TicketList = ({ settings, onSettingsChange }: TicketListProps) => {
     useEffect(() => {
         loadTickets();
     }, [settings]); // If settings change, reload
+
+    // Auto-scroll to active ticket on load
+    useEffect(() => {
+        if (activeTimer && !loading) {
+            // Wait a bit for the DOM to render
+            const timer = setTimeout(() => {
+                const el = document.getElementById(`ticket-${activeTimer.ticketId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [activeTimer?.ticketId, loading]);
+
+    // Update elapsed time display
+    useEffect(() => {
+        let interval: number;
+        if (activeTimer) {
+            const update = () => {
+                setElapsedTime(formatDurationFromStart(activeTimer.startTime));
+            };
+            update(); // Initial update
+            interval = window.setInterval(update, 1000);
+        } else {
+            setElapsedTime("");
+        }
+        return () => clearInterval(interval);
+    }, [activeTimer?.ticketId, activeTimer?.startTime]);
 
     const loadTickets = async () => {
         try {
@@ -160,42 +191,46 @@ export const TicketList = ({ settings, onSettingsChange }: TicketListProps) => {
 
     return (
         <>
-            <div className="fixed top-[57px] left-0 right-0 z-20 px-4 py-2.5 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 flex items-center gap-2 shadow-sm">
-                {activeTimer && (
-                    <button
-                        onClick={() => {
-                            const el = document.getElementById(`ticket-${activeTimer.ticketId}`);
-                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors whitespace-nowrap shadow-sm border border-blue-200 dark:border-blue-800"
-                    >
-                        <Clock size={12} className="animate-pulse" />
-                        Active
-                    </button>
-                )}
-                {pinnedTickets.length > 0 && (
-                    <button
-                        onClick={() => {
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors whitespace-nowrap border border-gray-200 dark:border-slate-700 shadow-sm"
-                    >
-                        <Pin size={12} />
-                        Pinned
-                    </button>
-                )}
-                {tickets.length > 0 && (
-                    <button
-                        onClick={() => {
-                            const el = document.getElementById('section-inprogress');
-                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors whitespace-nowrap border border-gray-200 dark:border-slate-700 shadow-sm"
-                    >
-                        <RefreshCw size={12} />
-                        My Work
-                    </button>
-                )}
+            <div className="fixed top-[57px] left-0 right-0 z-20 px-4 py-2.5 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between shadow-sm">
+                <div className="flex items-center gap-2">
+                    {pinnedTickets.length > 0 && (
+                        <button
+                            onClick={() => {
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors whitespace-nowrap border border-gray-200 dark:border-slate-700 shadow-sm"
+                        >
+                            <Pin size={12} />
+                            Pinned
+                        </button>
+                    )}
+                    {tickets.length > 0 && (
+                        <button
+                            onClick={() => {
+                                const el = document.getElementById('section-inprogress');
+                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors whitespace-nowrap border border-gray-200 dark:border-slate-700 shadow-sm"
+                        >
+                            <RefreshCw size={12} />
+                            My Work
+                        </button>
+                    )}
+                </div>
+                <div>
+                    {activeTimer && (
+                        <button
+                            onClick={() => {
+                                const el = document.getElementById(`ticket-${activeTimer.ticketId}`);
+                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors whitespace-nowrap shadow-sm border border-blue-200 dark:border-blue-800"
+                        >
+                            <Clock size={12} className="animate-pulse" />
+                            Active {elapsedTime && `(${elapsedTime})`}
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="p-4 pt-16 space-y-4 pb-20">
