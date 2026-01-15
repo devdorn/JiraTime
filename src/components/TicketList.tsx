@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { AppSettings, JiraTicket } from "../lib/types";
-import { fetchInProgressTickets, fetchDoneTickets, fetchTicketsByKeys } from "../lib/jira";
+import { fetchInProgressTickets, fetchDoneTickets, fetchTicketsByKeys, checkWorklogPermission } from "../lib/jira";
 import { useActiveTimer } from "../hooks/useActiveTimer";
 import { saveSettings } from "../lib/storage";
 import { TicketItem } from "./TicketItem";
@@ -133,6 +133,13 @@ export const TicketList = ({ settings, onSettingsChange, onTimeUpdate }: TicketL
             const [ticket] = await fetchTicketsByKeys(settings, [key]);
 
             if (ticket) {
+                // Check permissions before pinning
+                const hasPermission = await checkWorklogPermission(settings, key);
+                if (!hasPermission) {
+                    alert(`You do not have permission to log work on ${key}. This ticket cannot be pinned for time tracking.`);
+                    return;
+                }
+
                 const newKeys = [...settings.pinnedTicketKeys, key];
                 await saveSettings({ ...settings, pinnedTicketKeys: newKeys });
                 setPinInput("");

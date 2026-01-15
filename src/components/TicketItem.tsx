@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import type { JiraTicket, AppSettings } from "../lib/types";
 import type { ActiveTimer } from "../hooks/useActiveTimer";
-import { addWorklog } from "../lib/jira";
+import { addWorklog, checkWorklogPermission } from "../lib/jira";
 import { formatDuration, formatDurationFromStart, parseDuration, cn } from "../lib/utils";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import {
     Play, Square, ExternalLink, ChevronDown, ChevronUp, Clock,
     Bug, CheckSquare, Bookmark, Zap, GitCommit, FileQuestion,
-    HelpCircle, Microscope, PinOff
+    HelpCircle, Microscope, PinOff, Trash2, RotateCcw
 } from "lucide-react";
 
 // Helper for Issue Type Icon
@@ -84,9 +84,11 @@ export const TicketItem = ({
     const [description, setDescription] = useState(() => {
         return localStorage.getItem(getStorageKey()) || "";
     });
+    const [lastErrorMessage, setLastErrorMessage] = useState("");
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [liveDuration, setLiveDuration] = useState("");
+    const [hasError, setHasError] = useState(false);
 
     const isTimerRunning = activeTimer?.ticketId === ticket.id;
 
@@ -129,6 +131,8 @@ export const TicketItem = ({
         if (!manualTime) return;
 
         setIsSubmitting(true);
+        setHasError(false); // Clear previous errors
+        setLastErrorMessage("");
         try {
             // Check Easter Egg
             const seconds = parseDuration(manualTime);
@@ -147,7 +151,10 @@ export const TicketItem = ({
             // Optional: Show success feedback
         } catch (error) {
             console.error(error);
-            alert("Failed to log time. Check console.");
+            setHasError(true);
+            const msg = error instanceof Error ? error.message : "Failed to log time.";
+            setLastErrorMessage(msg);
+            // alert(msg); // Removed alert to rely on in-component display
         } finally {
             setIsSubmitting(false);
         }
@@ -157,6 +164,8 @@ export const TicketItem = ({
         if (!activeTimer) return;
 
         setIsSubmitting(true);
+        setHasError(false); // Clear previous errors
+        setLastErrorMessage("");
         try {
             let seconds = Math.floor((Date.now() - activeTimer.startTime) / 1000);
 
@@ -179,7 +188,52 @@ export const TicketItem = ({
             onRefresh();
         } catch (error) {
             console.error(error);
-            alert("Failed to save timer. Check console.");
+            setHasError(true);
+            const msg = error instanceof Error ? error.message : "Failed to save timer.";
+            setLastErrorMessage(msg);
+            // alert(msg); // Removed alert to rely on in-component display
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDiscardTimer = () => {
+        if (!confirm("Are you sure you want to discard the currently tracked time? This cannot be undone.")) return;
+
+        onStopTimer();
+        setDescription("");
+        setHasError(false); // Clear errors on discard
+        setLastErrorMessage("");
+        localStorage.removeItem(getStorageKey());
+        onRefresh();
+    };
+
+    const handleStartTimerWithCheck = async () => {
+        setIsSubmitting(true);
+        setHasError(false); // Clear previous errors
+        setLastErrorMessage("");
+        try {
+            const hasPermission = await checkWorklogPermission(settings, ticket.key);
+            if (!hasPermission) {
+                const msg = `You do not have permission to log work on ${ticket.key}.`;
+                setHasError(true);
+                setLastErrorMessage(msg);
+                // alert(msg); // Removed alert to rely on in-component display
+                return;
+            }
+            onStartTimer(ticket.id);
+        } catch (error) {
+            console.error("Failed to check permissions:", error);
+            const msg = error instanceof Error ? error.message : "Failed to check permissions.";
+            setHasError(true);
+            setLastErrorMessage(msg);
+            // Fallback: allow starting if check fails? Or block? 
+            // Better to block if we can't be sure, or just warn.
+            if (confirm(`Could not verify permissions: ${msg}. Start timer anyway?`)) {
+                setHasError(false); // Clear error if user proceeds
+                setLastErrorMessage("");
+                onStartTimer(ticket.id);
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -265,21 +319,33 @@ export const TicketItem = ({
                     {/* Timer Section */}
                     <div className="py-3 flex items-center justify-between gap-3">
                         {isTimerRunning ? (
-                            <Button
-                                variant="danger"
-                                className="w-full"
-                                onClick={handleStopTimer}
-                                isLoading={isSubmitting}
-                            >
-                                <Square className="fill-current mr-2 h-4 w-4" />
-                                Stop & Save ({liveDuration})
-                            </Button>
+                            <div className="flex gap-2 w-full">
+                                <Button
+                                    variant="danger"
+                                    className="flex-1"
+                                    onClick={handleStopTimer}
+                                    isLoading={isSubmitting}
+                                >
+                                    {hasError ? <RotateCcw className="mr-2 h-4 w-4" /> : <Square className="fill-current mr-2 h-4 w-4" />}
+                                    {hasError ? "Retry Save" : "Stop & Save"} ({liveDuration})
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    className="px-3 border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-900/20"
+                                    onClick={handleDiscardTimer}
+                                    disabled={isSubmitting}
+                                    title="Discard Time"
+                                >
+                                    <Trash2 size={16} />
+                                </Button>
+                            </div>
                         ) : (
                             <Button
                                 variant="primary"
                                 className="w-full"
-                                disabled={!!activeTimer} // Disable starting if another timer is running elsewhere
-                                onClick={() => onStartTimer(ticket.id)}
+                                disabled={!!activeTimer || isSubmitting} // Disable starting if another timer is running elsewhere
+                                onClick={handleStartTimerWithCheck}
+                                isLoading={isSubmitting && !isTimerRunning}
                             >
                                 <Play className="fill-current mr-2 h-4 w-4" />
                                 Start Timer
@@ -323,6 +389,13 @@ export const TicketItem = ({
                             disabled={isSubmitting}
                         />
                     </div>
+
+                    {hasError && lastErrorMessage && (
+                        <div className="mt-2 p-2 rounded bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 text-[10px] text-red-600 dark:text-red-400">
+                            <div className="font-bold uppercase mb-1">Error</div>
+                            {lastErrorMessage}
+                        </div>
+                    )}
                 </div>
             )}
         </div>

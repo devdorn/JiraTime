@@ -270,3 +270,24 @@ export const fetchTodaysTime = async (settings: AppSettings): Promise<number> =>
         return 0;
     }
 };
+
+export const checkWorklogPermission = async (settings: AppSettings, ticketKey: string): Promise<boolean> => {
+    try {
+        const response = await fetch(`${settings.jiraHost}/rest/api/3/mypermissions?issueKey=${ticketKey}&permissions=WORK_ON_ISSUES`, {
+            headers: createHeaders(settings),
+        });
+
+        if (!response.ok) {
+            console.error(`Permission check failed for ${ticketKey}:`, response.status, response.statusText);
+            return false;
+        }
+
+        const data = await response.json();
+        const hasPermission = data.permissions?.WORK_ON_ISSUES?.havePermission === true;
+        console.log(`Permission check for ${ticketKey}:`, hasPermission);
+        return hasPermission;
+    } catch (error) {
+        console.error("Permission check error:", error);
+        return false;
+    }
+};
