@@ -365,6 +365,7 @@ export const TicketItem = ({
                             placeholder="e.g. 2h 30m"
                             value={manualTime}
                             onChange={(e) => setManualTime(e.target.value)}
+                            onKeyDown={(e) => e.stopPropagation()}
                             className="h-9"
                             disabled={isSubmitting}
                         />
@@ -384,6 +385,7 @@ export const TicketItem = ({
                             placeholder="Work description (optional)"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
+                            onKeyDown={(e) => e.stopPropagation()}
                             className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-xs placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-white dark:placeholder:text-gray-500 dark:focus:ring-blue-400 min-h-[36px] resize-y"
                             rows={1}
                             disabled={isSubmitting}
