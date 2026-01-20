@@ -4,10 +4,27 @@ import { fetchInProgressTickets, fetchDoneTickets, fetchTicketsByKeys, checkWork
 import { useActiveTimer } from "../hooks/useActiveTimer";
 import { saveSettings } from "../lib/storage";
 import { TicketItem } from "./TicketItem";
+import { SortableTicketItem } from "./SortableTicketItem";
 import { Loader2, AlertCircle, RefreshCw, Pin, Plus, Clock, ChevronDown } from "lucide-react";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import { formatDurationFromStart } from "../lib/utils";
+import {
+    DndContext,
+    pointerWithin,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 interface TicketListProps {
     settings: AppSettings;
@@ -24,6 +41,18 @@ export const TicketList = ({ settings, onSettingsChange, onTimeUpdate }: TicketL
     const [showDone, setShowDone] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [elapsedTime, setElapsedTime] = useState("");
+
+    // DnD Sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
     // Collapsible section states
     const [isPinnedCollapsed, setIsPinnedCollapsed] = useState(() => {
@@ -95,13 +124,77 @@ export const TicketList = ({ settings, onSettingsChange, onTimeUpdate }: TicketL
             setLoading(true);
             setError("");
 
-            const inProgress = await fetchInProgressTickets(settings);
-            setTickets(inProgress);
+            const fetchedTickets = await fetchInProgressTickets(settings);
+
+            // Apply Sort Order Logic
+            setTickets(() => {
+                const savedOrder = localStorage.getItem('jiratime_ticket_order');
+                let mergedTickets = [...fetchedTickets];
+
+                if (savedOrder) {
+                    const orderIds: string[] = JSON.parse(savedOrder);
+
+                    // 1. Sort fetched tickets based on saved order
+                    // Separate tickets that are in the saved order vs new ones
+                    const orderedTickets: JiraTicket[] = [];
+                    const ticketMap = new Map(fetchedTickets.map(t => [t.id, t]));
+
+                    // Add existing tickets in order
+                    for (const id of orderIds) {
+                        if (ticketMap.has(id)) {
+                            orderedTickets.push(ticketMap.get(id)!);
+                            ticketMap.delete(id);
+                        }
+                    }
+
+                    // Remaining tickets in map are new
+                    // Add new "In Progress" tickets to the TOP of the new batch
+                    // Add others (To Do) to the bottom
+                    const remaining = Array.from(ticketMap.values());
+                    const newInProgress = remaining.filter(t => t.status.categoryKey === 'indeterminate');
+                    const newToDo = remaining.filter(t => t.status.categoryKey !== 'indeterminate');
+
+                    // Strategy: 
+                    // If we have a saved order, maybe we interpret "In Progress" priority as:
+                    // New In-Progress tickets should probably jump to the top of the WHOLE list 
+                    // or just the top of the new bunch? 
+                    // Let's put new In-Progress at the very top to ensure visibility.
+
+                    mergedTickets = [
+                        ...newInProgress,
+                        ...orderedTickets,
+                        ...newToDo
+                    ];
+                } else {
+                    // Default Sort: In Progress (indeterminate) first, then others (To Do/New)
+                    mergedTickets.sort((a, b) => {
+                        const aInProgress = a.status.categoryKey === 'indeterminate';
+                        const bInProgress = b.status.categoryKey === 'indeterminate';
+
+                        if (aInProgress && !bInProgress) return -1;
+                        if (!aInProgress && bInProgress) return 1;
+                        return 0; // Keep relative order (fetched by updated DESC)
+                    });
+                }
+
+                return mergedTickets;
+            });
+
 
             // Fetch Pinned
             if (settings.pinnedTicketKeys.length > 0) {
                 const pinned = await fetchTicketsByKeys(settings, settings.pinnedTicketKeys);
-                setPinnedTickets(pinned);
+
+                // Sort pinned tickets to match the order in settings.pinnedTicketKeys
+                const pinnedMap = new Map(pinned.map(t => [t.key, t]));
+                const orderedPinned: JiraTicket[] = [];
+
+                settings.pinnedTicketKeys.forEach(key => {
+                    const ticket = pinnedMap.get(key);
+                    if (ticket) orderedPinned.push(ticket);
+                });
+
+                setPinnedTickets(orderedPinned);
             } else {
                 setPinnedTickets([]);
             }
@@ -111,6 +204,57 @@ export const TicketList = ({ settings, onSettingsChange, onTimeUpdate }: TicketL
             setError(err instanceof Error ? err.message : "Failed to load tickets. Check your settings and connection.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (!over) return;
+        if (active.id === over.id) return;
+
+        const activeId = String(active.id);
+        const overId = String(over.id);
+
+        // Handle Pinned Tickets DnD
+        if (activeId.startsWith('pinned-')) {
+            // Ensure we are dropping within pinned list
+            if (!overId.startsWith('pinned-')) return;
+
+            setPinnedTickets((items) => {
+                const oldIndex = items.findIndex(t => `pinned-${t.id}` === activeId);
+                const newIndex = items.findIndex(t => `pinned-${t.id}` === overId);
+
+                if (oldIndex !== -1 && newIndex !== -1) {
+                    const newOrder = arrayMove(items, oldIndex, newIndex);
+
+                    const newKeys = newOrder.map(t => t.key);
+                    saveSettings({ ...settings, pinnedTicketKeys: newKeys }).catch(console.error);
+
+                    return newOrder;
+                }
+                return items;
+            });
+        }
+        // Handle My Work DnD
+        else {
+            // Ensure we are dropping within My Work list
+            if (overId.startsWith('pinned-')) return;
+
+            setTickets((items) => {
+                const oldIndex = items.findIndex((item) => item.id === activeId);
+                const newIndex = items.findIndex((item) => item.id === overId);
+
+                if (oldIndex !== -1 && newIndex !== -1) {
+                    const newOrder = arrayMove(items, oldIndex, newIndex);
+
+                    const orderIds = newOrder.map(t => t.id);
+                    localStorage.setItem('jiratime_ticket_order', JSON.stringify(orderIds));
+
+                    return newOrder;
+                }
+                return items;
+            });
         }
     };
 
@@ -267,117 +411,98 @@ export const TicketList = ({ settings, onSettingsChange, onTimeUpdate }: TicketL
 
 
             <div className="p-4 pt-16 space-y-4 pb-20">
-                {/* Pinned Tickets Section */}
-                <div className="space-y-3">
-                    <div
-                        className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800/50 -mx-2 px-2 py-1 rounded transition-colors"
-                        onClick={togglePinnedCollapse}
-                    >
-                        <h2 id="section-pinned" className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1 scroll-mt-28">
-                            <Pin size={14} /> Pinned Tickets
-                        </h2>
-                        <ChevronDown
-                            size={16}
-                            className={`text-gray-400 transition-transform ${isPinnedCollapsed ? '-rotate-90' : ''}`}
-                        />
-                    </div>
-
-                    {!isPinnedCollapsed && (
-                        <>
-
-                            <form onSubmit={handleAddPin} className="flex gap-2">
-                                <Input
-                                    placeholder="Add ticket (e.g. PROJ-123)"
-                                    value={pinInput}
-                                    onChange={e => setPinInput(e.target.value)}
-                                    className="h-8 text-sm"
-                                    disabled={isPinning}
-                                />
-                                <Button type="submit" variant="secondary" className="h-8" disabled={!pinInput || isPinning} isLoading={isPinning}>
-                                    <Plus size={16} />
-                                </Button>
-                            </form>
-
-                            {pinnedTickets.map((ticket) => (
-                                <div id={`ticket-${ticket.id}`} key={ticket.id}>
-                                    <TicketItem
-                                        ticket={ticket}
-                                        settings={settings}
-                                        activeTimer={activeTimer}
-                                        onStartTimer={startTimer}
-                                        onStopTimer={stopTimer}
-                                        onRefresh={handleRefresh}
-                                        onRemove={() => handleRemovePin(ticket.key)}
-                                    />
-                                </div>
-                            ))}
-                        </>
-                    )}
-                </div>
-
-                <div className="border-t border-gray-100 dark:border-slate-800 my-4"></div>
-
-                <div
-                    className="flex items-center justify-between mb-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800/50 -mx-2 px-2 py-1 rounded transition-colors"
-                    onClick={toggleMyWorkCollapse}
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={pointerWithin}
+                    modifiers={[restrictToVerticalAxis]}
+                    onDragEnd={handleDragEnd}
                 >
-                    <h2 id="section-inprogress" className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider scroll-mt-28">My Work</h2>
-                    <div className="flex items-center gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); handleRefresh(); }} className="text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 transition-colors p-1" title="Refresh">
-                            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
-                        </button>
-                        <ChevronDown
-                            size={16}
-                            className={`text-gray-400 transition-transform ${isMyWorkCollapsed ? '-rotate-90' : ''}`}
-                        />
-                    </div>
-                </div>
-
-                {!isMyWorkCollapsed && (
+                    {/* Pinned Tickets Section */}
                     <div className="space-y-3">
-                        {tickets.length === 0 ? (
-                            <div className="text-center py-8 bg-gray-50 dark:bg-slate-800 border border-dashed rounded-lg border-gray-300 dark:border-slate-700">
-                                <p className="text-sm text-gray-500 dark:text-gray-400">No tickets in progress found.</p>
-                            </div>
-                        ) : (
-                            tickets.map((ticket) => (
-                                <div id={`ticket-${ticket.id}`} key={ticket.id}>
-                                    <TicketItem
-                                        ticket={ticket}
-                                        settings={settings}
-                                        activeTimer={activeTimer}
-                                        onStartTimer={startTimer}
-                                        onStopTimer={stopTimer}
-                                        onRefresh={handleRefresh}
+                        <div
+                            className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800/50 -mx-2 px-2 py-1 rounded transition-colors"
+                            onClick={togglePinnedCollapse}
+                        >
+                            <h2 id="section-pinned" className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1 scroll-mt-28">
+                                <Pin size={14} /> Pinned Tickets
+                            </h2>
+                            <ChevronDown
+                                size={16}
+                                className={`text-gray-400 transition-transform ${isPinnedCollapsed ? '-rotate-90' : ''}`}
+                            />
+                        </div>
+
+                        {!isPinnedCollapsed && (
+                            <>
+
+                                <form onSubmit={handleAddPin} className="flex gap-2">
+                                    <Input
+                                        placeholder="Add ticket (e.g. PROJ-123)"
+                                        value={pinInput}
+                                        onChange={e => setPinInput(e.target.value)}
+                                        className="h-8 text-sm"
+                                        disabled={isPinning}
                                     />
-                                </div>
-                            ))
+                                    <Button type="submit" variant="secondary" className="h-8" disabled={!pinInput || isPinning} isLoading={isPinning}>
+                                        <Plus size={16} />
+                                    </Button>
+                                </form>
+
+                                <SortableContext
+                                    items={pinnedTickets.map(t => "pinned-" + t.id)}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    {pinnedTickets.map((ticket) => (
+                                        <SortableTicketItem
+                                            key={ticket.id}
+                                            id={`pinned-${ticket.id}`}
+                                            ticket={ticket}
+                                            settings={settings}
+                                            activeTimer={activeTimer}
+                                            onStartTimer={startTimer}
+                                            onStopTimer={stopTimer}
+                                            onRefresh={handleRefresh}
+                                            onRemove={() => handleRemovePin(ticket.key)}
+                                        />
+                                    ))}
+                                </SortableContext>
+                            </>
                         )}
                     </div>
-                )}
 
-                <div className="pt-4 border-t border-gray-200 dark:border-slate-700">
-                    <div className="flex items-center gap-2 mb-4">
-                        <input
-                            id="show-done"
-                            type="checkbox"
-                            checked={showDone}
-                            onChange={toggleDone}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4 dark:border-slate-600 dark:bg-slate-800 dark:checked:bg-blue-500"
-                        />
-                        <label htmlFor="show-done" className="text-sm font-medium text-gray-700 dark:text-gray-300 select-none">
-                            Show My Completed Work
-                        </label>
+                    <div className="border-t border-gray-100 dark:border-slate-800 my-4"></div>
+
+                    <div
+                        className="flex items-center justify-between mb-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800/50 -mx-2 px-2 py-1 rounded transition-colors"
+                        onClick={toggleMyWorkCollapse}
+                    >
+                        <h2 id="section-inprogress" className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider scroll-mt-28">My Work</h2>
+                        <div className="flex items-center gap-2">
+                            <button onClick={(e) => { e.stopPropagation(); handleRefresh(); }} className="text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 transition-colors p-1" title="Refresh">
+                                <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+                            </button>
+                            <ChevronDown
+                                size={16}
+                                className={`text-gray-400 transition-transform ${isMyWorkCollapsed ? '-rotate-90' : ''}`}
+                            />
+                        </div>
                     </div>
 
-                    {showDone && (
+                    {!isMyWorkCollapsed && (
                         <div className="space-y-3">
-                            {doneTickets.length === 0 ? (
-                                <p className="text-sm text-gray-400 text-center py-4">No completed tickets in the last 7 days.</p>
+                            {tickets.length === 0 ? (
+                                <div className="text-center py-8 bg-gray-50 dark:bg-slate-800 border border-dashed rounded-lg border-gray-300 dark:border-slate-700">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">No tickets in progress found.</p>
+                                </div>
                             ) : (
-                                doneTickets.map((ticket) => (
-                                    <div id={`ticket-${ticket.id}`} key={ticket.id}>
-                                        <TicketItem
+                                <SortableContext
+                                    items={tickets.map(t => t.id)}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    {tickets.map((ticket) => (
+                                        <SortableTicketItem
+                                            key={ticket.id}
+                                            id={ticket.id}
                                             ticket={ticket}
                                             settings={settings}
                                             activeTimer={activeTimer}
@@ -385,21 +510,57 @@ export const TicketList = ({ settings, onSettingsChange, onTimeUpdate }: TicketL
                                             onStopTimer={stopTimer}
                                             onRefresh={handleRefresh}
                                         />
-                                    </div>
-                                ))
+                                    ))}
+                                </SortableContext>
                             )}
                         </div>
                     )}
-                </div>
 
-                {activeTimer && !tickets.find(t => t.id === activeTimer.ticketId) && !pinnedTickets.find(t => t.id === activeTimer.ticketId) && !doneTickets.find(t => t.id === activeTimer.ticketId) && (
-                    <div className="fixed bottom-0 left-0 right-0 p-3 bg-blue-600 text-white shadow-lg flex items-center justify-between">
-                        <div className="text-sm font-medium">
-                            Timer running on hidden ticket
+                    <div className="pt-4 border-t border-gray-200 dark:border-slate-700">
+                        <div className="flex items-center gap-2 mb-4">
+                            <input
+                                id="show-done"
+                                type="checkbox"
+                                checked={showDone}
+                                onChange={toggleDone}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4 dark:border-slate-600 dark:bg-slate-800 dark:checked:bg-blue-500"
+                            />
+                            <label htmlFor="show-done" className="text-sm font-medium text-gray-700 dark:text-gray-300 select-none">
+                                Show My Completed Work
+                            </label>
                         </div>
-                        <Button variant="secondary" className="h-8 text-xs" onClick={stopTimer}>Stop</Button>
+
+                        {showDone && (
+                            <div className="space-y-3">
+                                {doneTickets.length === 0 ? (
+                                    <p className="text-sm text-gray-400 text-center py-4">No completed tickets in the last 7 days.</p>
+                                ) : (
+                                    doneTickets.map((ticket) => (
+                                        <div id={`ticket-${ticket.id}`} key={ticket.id}>
+                                            <TicketItem
+                                                ticket={ticket}
+                                                settings={settings}
+                                                activeTimer={activeTimer}
+                                                onStartTimer={startTimer}
+                                                onStopTimer={stopTimer}
+                                                onRefresh={handleRefresh}
+                                            />
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
                     </div>
-                )}
+
+                    {activeTimer && !tickets.find(t => t.id === activeTimer.ticketId) && !pinnedTickets.find(t => t.id === activeTimer.ticketId) && !doneTickets.find(t => t.id === activeTimer.ticketId) && (
+                        <div className="fixed bottom-0 left-0 right-0 p-3 bg-blue-600 text-white shadow-lg flex items-center justify-between">
+                            <div className="text-sm font-medium">
+                                Timer running on hidden ticket
+                            </div>
+                            <Button variant="secondary" className="h-8 text-xs" onClick={stopTimer}>Stop</Button>
+                        </div>
+                    )}
+                </DndContext>
             </div >
         </>
     );

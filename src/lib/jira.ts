@@ -126,7 +126,8 @@ const searchTickets = async (settings: AppSettings, jql: string): Promise<JiraTi
         },
         status: {
             name: issue.fields.status?.name || "Unknown",
-            categoryColor: getStatusColor(issue.fields.status?.statusCategory?.key || "")
+            categoryColor: getStatusColor(issue.fields.status?.statusCategory?.key || ""),
+            categoryKey: issue.fields.status?.statusCategory?.key || "new"
         }
     }));
 };
