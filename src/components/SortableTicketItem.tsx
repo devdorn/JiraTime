@@ -34,7 +34,7 @@ export const SortableTicketItem = (props: SortableTicketItemProps) => {
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners} id={`ticket-${props.ticket.id}`}>
             <TicketItem {...props} />
         </div>
     );
