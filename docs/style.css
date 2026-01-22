@@ -70,23 +70,18 @@ nav .container {
 .logo {
     display: flex;
     align-items: center;
-    gap: 12px;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-color);
-    background: rgba(255, 255, 255, 0.1);
-    padding: 8px 16px;
+    background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.25) 0%, transparent 70%);
+    padding: 6px 8px;
     border-radius: 12px;
     backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .logo:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--border-color);
 }
 
 .logo img {
-    height: 32px;
+    height: 52px;
 }
 
 .nav-links {
@@ -120,10 +115,13 @@ nav .container {
 }
 
 .hero-logo {
-    width: 150px;
+    width: 250px;
     height: auto;
-    margin-bottom: 30px;
-    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+    margin-bottom: 40px;
+    padding: 30px;
+    background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.25) 0%, transparent 70%);
+    border-radius: 20px;
+    filter: drop-shadow(0 0 50px rgba(255, 255, 255, 0.5)) drop-shadow(0 0 100px rgba(255, 255, 255, 0.3));
 }
 
 .hero h1 {
