@@ -59,7 +59,7 @@ In any case: this browser extension is designed for all those who desire a strea
 -   **Role of AI**: Code generation, architecture design, documentation, and debugging.
 -   **Role of Human**: Requirements definition, code review, verification, and deployment.
 
-[*H/80*](https://www.humangehalt.org)
+[*H/80*](https://humangehalt.md)
 
 While extensive efforts were made to ensure code quality and compliance, please use with appropriate due diligence.
 
@@ -70,4 +70,4 @@ If you wish to modify the extension or add features, please **Fork** the reposit
 
 ## License
 
-[MIT](LICENSE) © 2025 Bernhard Dorn
+[MIT](LICENSE) © 2026 Bernhard Dorn
