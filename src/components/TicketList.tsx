@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { AppSettings, JiraTicket } from "../lib/types";
-import { fetchInProgressTickets, fetchDoneTickets, fetchTicketsByKeys, checkWorklogPermission } from "../lib/jira";
+import { fetchInProgressTickets, fetchDoneTickets, fetchTicketsByKeys, checkWorklogPermission, addWorklog } from "../lib/jira";
 import { useActiveTimer } from "../hooks/useActiveTimer";
 import { saveSettings } from "../lib/storage";
 import { TicketItem } from "./TicketItem";
@@ -41,6 +41,7 @@ export const TicketList = ({ settings, onSettingsChange, onTimeUpdate }: TicketL
     const [showDone, setShowDone] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [elapsedTime, setElapsedTime] = useState("");
+    const [stoppingHidden, setStoppingHidden] = useState(false);
 
     // DnD Sensors
     const sensors = useSensors(
@@ -105,7 +106,33 @@ export const TicketList = ({ settings, onSettingsChange, onTimeUpdate }: TicketL
 
     // Fetch today's time AFTER tickets load (doesn't block initial ticket display)
 
+    const handleStopHiddenTimer = async () => {
+        if (!activeTimer) return;
+        setStoppingHidden(true);
+        try {
+            let seconds = Math.floor((Date.now() - activeTimer.startTime) / 1000);
+            if (seconds >= 28800) {
+                alert("Whoa, that's 8+ hours! 🌿\n\nGo touch some grass.\n(Saving your time anyway...)");
+            }
+            if (seconds < 60) {
+                seconds = 60;
+            }
 
+            const descKey = `jira_desc_draft_${activeTimer.ticketId}`;
+            const desc = localStorage.getItem(descKey) || "";
+
+            await addWorklog(settings, activeTimer.ticketId, seconds, desc);
+            
+            localStorage.removeItem(descKey);
+            await stopTimer();
+            handleRefresh();
+        } catch (err) {
+            console.error(err);
+            alert(err instanceof Error ? err.message : "Failed to save hidden timer.");
+        } finally {
+            setStoppingHidden(false);
+        }
+    };
     // Toggle functions with localStorage persistence
     const togglePinnedCollapse = () => {
         const newValue = !isPinnedCollapsed;
@@ -557,7 +584,14 @@ export const TicketList = ({ settings, onSettingsChange, onTimeUpdate }: TicketL
                             <div className="text-sm font-medium">
                                 Timer running on hidden ticket
                             </div>
-                            <Button variant="secondary" className="h-8 text-xs" onClick={stopTimer}>Stop</Button>
+                            <Button 
+                                variant="secondary" 
+                                className="h-8 text-xs" 
+                                onClick={handleStopHiddenTimer}
+                                isLoading={stoppingHidden}
+                            >
+                                Stop & Save
+                            </Button>
                         </div>
                     )}
                 </DndContext>
